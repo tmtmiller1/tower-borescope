@@ -6,6 +6,7 @@ from statistics import median
 from time import perf_counter
 
 import numpy as np
+import pytest
 
 from synthetic import shifted, textured_frame
 from tower_borescope.imaging.denoise import TemporalDenoise
@@ -41,6 +42,7 @@ def test_first_frame_passes_through_and_reset_restarts():
     assert denoiser.apply(frame) is frame
 
 
+@pytest.mark.timing
 def test_temporal_denoise_fits_the_frame_budget():
     base = textured_frame()
     rng = np.random.default_rng(3)

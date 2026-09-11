@@ -92,6 +92,7 @@ def test_motion_detector_tracks_still_time():
     assert detector.still_seconds(6.0) == 2.0
 
 
+@pytest.mark.timing
 def test_meters_fit_the_frame_budget():
     frame = textured_frame()
     detector = MotionDetector()

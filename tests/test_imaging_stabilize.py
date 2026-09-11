@@ -7,6 +7,7 @@ from time import perf_counter
 
 import cv2
 import numpy as np
+import pytest
 
 from synthetic import shifted, textured_frame
 from tower_borescope.imaging.geometry import ANALYSIS_WIDTH, small_gray
@@ -49,6 +50,7 @@ def test_output_keeps_the_frame_size_and_reset_clears_the_path():
     assert first.shape == base.shape
 
 
+@pytest.mark.timing
 def test_stabilizer_fits_the_frame_budget():
     base = textured_frame()
     frames = [shifted(base, float(k % 5), float(k % 3)) for k in range(12)]

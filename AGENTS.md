@@ -57,8 +57,9 @@ bundled OpenCV does not contain; new code must not use `cv2.VideoCapture` or
 `virtual-camera` extra (pyvirtualcam, GPL-2.0) and its View tab shows the virtual camera
 disabled; `scripts/setup.sh` installs the extra for development, and
 `uv sync --all-groups --extra virtual-camera` restores it after a plain `uv sync`.
-Tests marked `timing` assert real-time frame rates. CI and mutation runs leave them out,
-so `uv run pytest -m timing` runs them on a development machine.
+Tests marked `timing` assert wall-clock speed: frame rates and per-frame time budgets. CI,
+release and mutation runs leave them out, so `uv run pytest -m timing` runs them on a
+development machine.
 `uv run mutmut run --max-children 2` mutates the whole package and keeps its results in
 `mutants/`; a later run retests only changed code. Each mutmut worker holds about 1.8 GB,
 and without `--max-children` mutmut starts one per core, which runs a 16 GB Mac out of

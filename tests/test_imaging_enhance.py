@@ -7,6 +7,7 @@ from time import perf_counter
 
 import cv2
 import numpy as np
+import pytest
 
 from synthetic import textured_frame
 from tower_borescope.imaging.enhance import enhance, finish_still, unsharp
@@ -37,12 +38,17 @@ def test_unsharp_with_zero_amount_is_unchanged():
     assert np.array_equal(unsharp(frame, 0.0), frame)
 
 
-def test_enhance_keeps_shape_and_fits_the_frame_budget():
+def test_enhance_keeps_shape_and_changes_the_frame():
     frame = textured_frame()
     enhanced = enhance(frame)
     assert enhanced.shape == frame.shape
     assert enhanced.dtype == np.uint8
     assert not np.array_equal(enhanced, frame)
+
+
+@pytest.mark.timing
+def test_enhance_fits_the_frame_budget():
+    frame = textured_frame()
     assert _median_ms(lambda: enhance(frame)) < 50
 
 

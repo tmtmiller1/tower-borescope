@@ -69,12 +69,14 @@ def test_each_mode_renders_a_frame_of_the_same_shape():
     assert np.array_equal(outline(frame), apply_view_mode(frame, "Outline"))
 
 
+@pytest.mark.timing
 @pytest.mark.parametrize("mode", VIEW_MODES)
 def test_view_modes_fit_the_frame_budget(mode):
     frame = textured_frame()
     assert _median_ms(lambda: apply_view_mode(frame, mode)) < 50
 
 
+@pytest.mark.timing
 def test_glare_reduce_fits_the_frame_budget():
     frame = textured_frame()
     assert _median_ms(lambda: glare_reduce(frame, 0.6)) < 50

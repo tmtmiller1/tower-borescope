@@ -50,13 +50,22 @@ jobs:
         run: echo "key=$(scripts/build_opencv.sh --key)" >> "$GITHUB_OUTPUT"
 
       - name: Restore the OpenCV build
-        uses: actions/cache@v4
+        id: opencv-cache
+        uses: actions/cache/restore@v4
         with:
           path: build/${{ steps.opencv.outputs.key }}
           key: ${{ steps.opencv.outputs.key }}
 
       - name: Build OpenCV without FFmpeg
         run: scripts/build_opencv.sh
+
+      - name: Save the OpenCV build
+        # Saved as soon as it exists, so a failure in a later step keeps the compile.
+        if: steps.opencv-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: build/${{ steps.opencv.outputs.key }}
+          key: ${{ steps.opencv.outputs.key }}
 
       - name: Keep the OpenCV build logs when a step fails
         # The compile output goes to a log file that the runner deletes with the job.
@@ -85,7 +94,7 @@ jobs:
           [ -x "${ffmpeg_dirs[0]}/ffmpeg" ] || { echo "No bundled ffmpeg build found"; exit 1; }
           export TOWER_BORESCOPE_FFMPEG_PATH="$PWD/${ffmpeg_dirs[0]}/ffmpeg"
           build/venv/bin/pytest tests/test_imaging_*.py tests/test_measure_*.py \
-            tests/test_jpeg.py tests/test_app_dialogs_gallery.py -m "not timing"
+            tests/test_jpeg.py tests/test_app_dialogs_gallery.py -m "not timing" -rs
 
       - name: Keep the window picture from the built application
         uses: actions/upload-artifact@v4

@@ -78,6 +78,7 @@ def test_small_gray_is_float_at_analysis_width():
     assert gray.dtype == np.float32
 
 
+@pytest.mark.timing
 def test_geometry_fits_the_frame_budget():
     frame = textured_frame()
     assert _median_ms(lambda: zoom(frame, 2.0)) < 50

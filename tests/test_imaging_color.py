@@ -7,6 +7,7 @@ from time import perf_counter
 
 import cv2
 import numpy as np
+import pytest
 
 from synthetic import textured_frame
 from tower_borescope.imaging.color import COLOR_DEFAULTS, ColorGrade
@@ -33,13 +34,19 @@ def test_default_grade_is_a_bit_exact_no_op():
     assert np.array_equal(grade.apply(frame), frame)
 
 
-def test_full_grade_keeps_shape_and_fits_the_20_ms_budget():
+def test_full_grade_keeps_shape_and_type():
     frame = textured_frame()
     grade = ColorGrade.from_settings(FULL_GRADE)
     for _ in range(20):
         graded = grade.apply(frame)
     assert graded.shape == frame.shape
     assert graded.dtype == np.uint8
+
+
+@pytest.mark.timing
+def test_full_grade_fits_the_20_ms_budget():
+    frame = textured_frame()
+    grade = ColorGrade.from_settings(FULL_GRADE)
     assert _median_ms(lambda: grade.apply(frame), runs=50) < 20
 
 
