@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    name: Lint, types, complexity and tests
+    runs-on: macos-15
+    timeout-minutes: 30
+    env:
+      # Window tests paint into an offscreen surface; nothing needs a display.
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "latest"
+          enable-cache: true
+
+      - name: Install the environment
+        run: uv sync --all-groups
+
+      - name: Point the tests at the static ffmpeg from the build group
+        run: |
+          echo "TOWER_BORESCOPE_FFMPEG_PATH=$(uv run python -c \
+            'import imageio_ffmpeg; print(imageio_ffmpeg.get_ffmpeg_exe())')" \
+            >> "$GITHUB_ENV"
+
+      - name: Lint and format
+        run: |
+          uv run ruff check src tests scripts
+          uv run ruff format --check src tests scripts
+
+      - name: Types
+        run: uv run mypy
+
+      - name: Complexity
+        run: |
+          # radon prints every function above the ceiling; the output must be empty.
+          findings="$(uv run radon cc src tests -n C -s)"
+          if [ -n "$findings" ]; then echo "$findings"; exit 1; fi
+
+      - name: Tests
+        run: uv run pytest

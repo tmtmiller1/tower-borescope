@@ -1,0 +1,88 @@
+# tests
+
+Pytest suite for tower_borescope, using synthetic media and test doubles instead of recorded footage.
+
+## Files
+
+- `conftest.py`: sandboxed data locations, hardware and live-model opt-in options, the shared Qt application fixture, the `qt_sandbox` and `window` fixtures (INI settings under the test folder, no real microphones, a shown `MainWindow` on the fake reader) and the `wait_until` event-pumping helper that window tests import.
+- `synthetic.py`: procedural frames, a drawn corroded pipe scene for live vision-model checks, JPEG sequences and borescope USB packets.
+- `fakes.py`: in-process camera reader double and scripted AI backend double.
+- `test_ai_anthropic_backend.py`: Anthropic backend requests with an injected client.
+- `test_ai_anythingllm.py`: AnythingLLM backend requests, workspace listing and errors.
+- `test_ai_base.py`: backend protocol and AI error types.
+- `test_ai_conversation.py`: inspection conversation history and scale estimation.
+- `test_ai_factory.py`: backend selection and cost estimates.
+- `test_ai_http.py`: JSON HTTP transport and error mapping.
+- `test_ai_images.py`: image preparation for model requests.
+- `test_ai_keychain.py`: API key storage through a substituted command runner.
+- `test_ai_ollama.py`: Ollama backend requests, model listing and the opt-in live model check.
+- `test_ai_panel_html.py`: analysis rendering for the AI panel.
+- `test_ai_parsing.py`: model reply parsing into analysis and scale results.
+- `test_ai_prompts.py`: inspection and scale prompt text.
+- `test_ai_report.py`: inspection report HTML output.
+- `test_ai_schema.py`: analysis, issue and scale data models.
+- `test_ai_settings.py`: AI configuration defaults, environment values and settings round trip.
+- `test_app_dialogs_ai_settings.py`: AI settings dialog sections, saving and key storage through a substituted Keychain.
+- `test_app_dialogs_gallery.py`: capture gallery listing, sidecar details and deletion.
+- `test_app_dialogs_qr_dialog.py`: phone monitor QR code dialog painting.
+- `test_app_frame_info.py`: processed frame and meter record.
+- `test_app_icon.py`: drawn application icon size, transparency and repeatability.
+- `test_app_main.py`: application start-up and the test capture option.
+- `test_app_pipeline_automation.py`: time-lapse assembly, automatic stacking and motion snapshots.
+- `test_app_pipeline_outputs.py`: phone monitor publishing and virtual camera handling.
+- `test_app_pipeline_processor.py`: filter chain, live filters, meters and frame rate with every filter on.
+- `test_app_pipeline_recording.py`: recording lifecycle, pre-roll and stop on mode change.
+- `test_app_pipeline_state.py`: pipeline state defaults, settings loading and capture metadata.
+- `test_app_pipeline_stills.py`: snapshots, stacked stills, bursts, sidecars and annotated copies.
+- `test_app_pipeline_thread.py`: pipeline thread signals, mode switching, button events and the opt-in camera run.
+- `test_app_qt_image.py`: OpenCV image conversion to Qt images.
+- `test_app_style.py`: application style sheet and palette.
+- `test_app_view_ai_boxes.py`: AI issue boxes built from an analysis.
+- `test_app_view_badges.py`: recording, zoom, frozen and tool hint badges and toasts.
+- `test_app_view_geometry.py`: zoom, pan clamping and image and view coordinate mapping.
+- `test_app_view_overlay_painter.py`: measurement, annotation and AI box drawing.
+- `test_app_view_overlays.py`: measurement and annotation model, undo history and snapshots.
+- `test_app_view_painter.py`: grid, meters, histogram, compare divider and full frame painting.
+- `test_app_view_pointer.py`: mouse event routing for zoom, pan and tools.
+- `test_app_view_tools.py`: distance, angle, area, calibrate and annotation tools.
+- `test_app_view_video_view.py`: video widget freeze, compare modes, badge clicks and signals.
+- `test_app_widgets_html_text.py`: HTML escaping for panel text.
+- `test_app_widgets_labeled_slider.py`: labeled slider values, labels and change callbacks.
+- `test_app_widgets_layout.py`: sidebar layout helpers and focus policy.
+- `test_app_window_ai_controller.py`: analysis, follow-up questions, reports, back to live and backend failures.
+- `test_app_window_capture_controller.py`: snapshots, stacks, bursts, recording, time-lapse and button gestures.
+- `test_app_window_context.py`: shared window context.
+- `test_app_window_freeze_controller.py`: freeze, Esc, the frozen badge and Space.
+- `test_app_window_main_window.py`: streaming, panels, filters, captures, resolution switching, geometry and shortcuts.
+- `test_app_window_measure_controller.py`: measurement tools, units, calibration and AI scale estimates.
+- `test_app_window_menus.py`: menu structure, actions and shortcuts.
+- `test_app_window_share_controller.py`: phone monitor and virtual camera controls.
+- `test_capture_ffmpeg.py`: ffmpeg discovery and microphone device parsing.
+- `test_capture_recorder.py`: MP4 and raw MOV recording, frame padding and the audio command line.
+- `test_capture_storage.py`: capture file naming, sidecars and capture listing.
+- `test_cli.py`: command line parsing, error handling and the opt-in camera captures.
+- `test_config.py`: environment values, data paths and the settings store.
+- `test_device_camera.py`: camera open, retry, mode probe, frame reads and hardware checks.
+- `test_device_constants.py`: resolution mode table and protocol constants.
+- `test_device_libusb.py`: libusb library lookup order and backend loading.
+- `test_device_packets.py`: packet parsing, frame assembly, drop counting and button gestures.
+- `test_device_reader.py`: reader process loop, status messages and shutdown.
+- `test_device_transfers.py`: asynchronous bulk transfer queueing and cancellation.
+- `test_errors.py`: exception hierarchy.
+- `test_image_types.py`: image array type aliases.
+- `test_imaging_color.py`: color grading, white balance convergence and settings round trip.
+- `test_imaging_denoise.py`: temporal denoise noise reduction and motion following.
+- `test_imaging_enhance.py`: unsharp masking, enhancement and still finishing.
+- `test_imaging_geometry.py`: zoom, rotation, mirroring and the analysis image.
+- `test_imaging_meters.py`: focus score, histogram, clipping, zebra stripes and motion detection.
+- `test_imaging_stabilize.py`: shake removal on a synthetic jittered sequence.
+- `test_imaging_stacking.py`: frame alignment and 2x averaging.
+- `test_imaging_view_modes.py`: glare reduction and the view modes.
+- `test_jpeg.py`: JPEG header parsing, decoding and encoding.
+- `test_measure_calibration.py`: calibration storage, legacy format and focus lock.
+- `test_measure_render.py`: measurement and annotation drawing onto frames.
+- `test_measure_shapes.py`: distance, angle and area measurements, annotations and overlay snapshots.
+- `test_measure_units.py`: length and area formatting in every unit.
+- `test_remote_page.py`: phone monitor page content.
+- `test_remote_qr.py`: QR code matrix generation.
+- `test_remote_server.py`: phone monitor server endpoints, streaming, callbacks and shutdown.

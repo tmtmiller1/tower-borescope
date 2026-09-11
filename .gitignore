@@ -1,0 +1,24 @@
+# environment
+.venv/
+.env
+__pycache__/
+*.pyc
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+mutants/
+
+# build output (scripts/build_app.sh)
+build/
+dist/
+*.spec
+*.iconset/
+*.icns
+
+# sources kept only while the package port is in progress
+_legacy/
+
+# personal or generated
+settings.json
+*.log
+.DS_Store

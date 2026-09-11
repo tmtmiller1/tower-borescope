@@ -1,0 +1,71 @@
+name: Release
+
+# Builds the application bundle and disk image for Apple silicon and Intel Macs.
+# A tag such as v0.1.0 publishes both images on a GitHub release; a manual run only
+# stores them as workflow artifacts.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.arch }} disk image
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+          - runner: macos-15-intel
+            arch: x86_64
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "latest"
+
+      - name: Install the environment
+        run: uv sync --all-groups
+
+      - name: Build the bundle and the disk image
+        run: scripts/build_app.sh --no-install
+
+      - name: Keep the window picture from the built application
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-shot-${{ matrix.arch }}
+          path: build/test_shot.png
+
+      - name: Store the disk image
+        uses: actions/upload-artifact@v4
+        with:
+          name: disk-image-${{ matrix.arch }}
+          path: dist/*.dmg
+          if-no-files-found: error
+
+  publish:
+    name: Publish the GitHub release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Collect the disk images
+        uses: actions/download-artifact@v4
+        with:
+          pattern: disk-image-*
+          merge-multiple: true
+          path: images
+
+      - name: Create the release with both images attached
+        uses: softprops/action-gh-release@v2
+        with:
+          files: images/*.dmg
+          generate_release_notes: true
