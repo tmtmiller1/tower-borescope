@@ -241,7 +241,14 @@ build_wheel() {  # stage folder
     export CMAKE_ARGS="${CMAKE_OPTIONS[*]}" PATH="$TOOLS/bin:$PATH"
     "$TOOLS/bin/python" -m pip wheel --no-build-isolation --no-deps --no-cache-dir -v \
       --wheel-dir "$1" . >"$1/build.log" 2>&1 \
-      || { tail -40 "$1/build.log" >&2; exit 1; }
+      || {
+        # With parallel jobs the first compiler error scrolls far above the log's end.
+        echo "The OpenCV build failed. Errors in $1/build.log:" >&2
+        grep -nE "error:|fatal error|\*\*\* \[" "$1/build.log" | head -60 >&2 || true
+        echo "Last lines of the log:" >&2
+        tail -40 "$1/build.log" >&2
+        exit 1
+      }
   )
 }
 

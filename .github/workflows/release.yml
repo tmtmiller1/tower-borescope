@@ -58,6 +58,18 @@ jobs:
       - name: Build OpenCV without FFmpeg
         run: scripts/build_opencv.sh
 
+      - name: Keep the OpenCV build logs when a step fails
+        # The compile output goes to a log file that the runner deletes with the job.
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: opencv-build-log-${{ matrix.arch }}
+          path: |
+            build/opencv-*.partial/build.log
+            build/opencv-*.partial/cmake-args.txt
+            build/opencv_python-*/_skbuild/*/cmake-build/CMakeFiles/CMakeConfigureLog.yaml
+          if-no-files-found: ignore
+
       - name: Build the bundle and the disk image
         run: scripts/build_app.sh --no-install
 
