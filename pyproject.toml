@@ -90,6 +90,9 @@ python_files = ["test_*.py"]
 # tests/test_check_limits.py imports scripts/check_limits.py the same way.
 pythonpath = ["tests", "scripts"]
 addopts = ["-q", "--import-mode=importlib"]
+# A test still running after two minutes prints every thread's stack, so a hang in CI
+# shows where it waits instead of silently using up the job time limit.
+faulthandler_timeout = 120
 markers = [
     "camera: needs the borescope plugged in; enabled with --camera",
     "live_ai: sends a frame to a local vision model; enabled with --live-ai",
