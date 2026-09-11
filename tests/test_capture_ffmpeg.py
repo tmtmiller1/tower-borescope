@@ -1,4 +1,5 @@
-"""Tests for tower_borescope.capture.ffmpeg: executable discovery and device listing."""
+"""Tests for tower_borescope.capture.ffmpeg: executable discovery, device listing and
+first-frame reading."""
 
 from __future__ import annotations
 
@@ -6,10 +7,17 @@ import subprocess
 import sys
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 from tower_borescope.capture import ffmpeg
-from tower_borescope.capture.ffmpeg import AudioDevice, find_ffmpeg, list_audio_devices
+from tower_borescope.capture.ffmpeg import (
+    AudioDevice,
+    find_ffmpeg,
+    first_frame,
+    first_frame_command,
+    list_audio_devices,
+)
 
 # Captured stderr of: ffmpeg -hide_banner -f avfoundation -list_devices true -i ""
 DEVICE_LISTING = """\
@@ -118,3 +126,75 @@ def test_failed_listing_is_empty(monkeypatch, error):
     monkeypatch.setattr(ffmpeg, "find_ffmpeg", lambda: "ffmpeg")
     monkeypatch.setattr(ffmpeg.subprocess, "run", failing_run)
     assert list_audio_devices() == []
+
+
+def test_first_frame_reads_raw_bgr_pixels_from_stdout(monkeypatch, tmp_path):
+    calls = []
+    pixels = np.arange(4 * 2 * 3, dtype=np.uint8)
+
+    def fake_run(command, **kwargs):
+        calls.append((command, kwargs))
+        return subprocess.CompletedProcess(command, 0, stdout=pixels.tobytes() + b"x")
+
+    monkeypatch.setattr(ffmpeg, "find_ffmpeg", lambda: "ffmpeg")
+    monkeypatch.setattr(ffmpeg.subprocess, "run", fake_run)
+    frame = first_frame(tmp_path / "clip.mov", 4, 2)
+    assert frame is not None
+    assert frame.shape == (2, 4, 3)
+    assert frame.dtype == np.uint8
+    assert frame.flags.writeable
+    assert frame.tobytes() == pixels.tobytes()
+    command, kwargs = calls[0]
+    assert command == first_frame_command("ffmpeg", tmp_path / "clip.mov", 4, 2)
+    assert kwargs["timeout"] == ffmpeg.FRAME_TIMEOUT_SECONDS
+    assert kwargs["capture_output"] is True
+
+
+def test_first_frame_command_scales_one_frame_to_raw_bgr():
+    command = first_frame_command("/bin/ffmpeg", Path("/v/clip.mp4"), 220, 124)
+    assert command[:5] == [
+        "/bin/ffmpeg",
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-nostdin",
+    ]
+    assert command[5:] == [
+        "-i",
+        "/v/clip.mp4",
+        "-an",
+        "-frames:v",
+        "1",
+        "-vf",
+        "scale=220:124",
+        "-f",
+        "rawvideo",
+        "-pix_fmt",
+        "bgr24",
+        "-",
+    ]
+
+
+def test_first_frame_short_read_is_none(monkeypatch, tmp_path):
+    short = subprocess.CompletedProcess([], 1, stdout=bytes(4 * 2 * 3 - 1))
+    monkeypatch.setattr(ffmpeg, "find_ffmpeg", lambda: "ffmpeg")
+    monkeypatch.setattr(ffmpeg.subprocess, "run", lambda command, **kwargs: short)
+    assert first_frame(tmp_path / "clip.mp4", 4, 2) is None
+
+
+def test_first_frame_without_ffmpeg_is_none(monkeypatch, tmp_path):
+    monkeypatch.setattr(ffmpeg, "find_ffmpeg", lambda: None)
+    monkeypatch.setattr(ffmpeg.subprocess, "run", pytest.fail)
+    assert first_frame(tmp_path / "clip.mp4", 4, 2) is None
+
+
+@pytest.mark.parametrize(
+    "error", [OSError("exec failed"), subprocess.TimeoutExpired("ffmpeg", 5.0)]
+)
+def test_first_frame_failure_is_none(monkeypatch, tmp_path, error):
+    def failing_run(command, **kwargs):
+        raise error
+
+    monkeypatch.setattr(ffmpeg, "find_ffmpeg", lambda: "ffmpeg")
+    monkeypatch.setattr(ffmpeg.subprocess, "run", failing_run)
+    assert first_frame(tmp_path / "clip.mp4", 4, 2) is None

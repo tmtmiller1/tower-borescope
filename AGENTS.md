@@ -28,19 +28,32 @@ uv run pytest --camera
 uv run pytest --camera --live-ai
 uv run mutmut run --max-children 2
 uv run python scripts/mutation_score.py --gate
+scripts/build_opencv.sh
 scripts/build_app.sh
+build/venv/bin/pytest tests/test_imaging_*.py tests/test_measure_*.py tests/test_jpeg.py \
+  tests/test_app_dialogs_gallery.py -m "not timing"
 ```
 
 `scripts/check_limits.py` measures the size and complexity limits in the table below and
 exits 1 on any finding; CI runs it after radon.
 `--camera` tests need the borescope attached and no running Tower Borescope process.
-`--live-ai` tests need a local Ollama server with a vision model. `scripts/build_app.sh` needs
-the `build` dependency group (`uv sync --all-groups`). It compiles libusb and an LGPL ffmpeg
-from pinned release sources into `build/` with at most four make jobs, leaves unused Qt
-modules and Python packages out of the bundle, collects the license texts through
-`scripts/collect_licenses.py` and produces the signed bundle and the disk image in `dist/`;
-`.github/workflows/release.yml` runs it for both architectures and attaches the ffmpeg and
-libusb source tarballs to each release. The downloadable application leaves out the
+`--live-ai` tests need a local Ollama server with a vision model. `scripts/build_app.sh`
+creates its own environment in `build/venv` from `uv.lock` (build and dev groups, no
+extras) and never touches `.venv`. It runs `scripts/build_opencv.sh`, which compiles the
+opencv-python sdist without FFmpeg or any video I/O into a wheel cached in
+`build/opencv-<version>-<arch>-<hash>/`, because every PyPI opencv-python wheel for macOS
+links GPL FFmpeg libraries; development and CI keep the PyPI wheel. It compiles libusb and
+an LGPL ffmpeg from pinned release sources into `build/` with at most four make jobs,
+leaves unused Qt modules and Python packages out of the bundle, collects the license texts
+through `scripts/collect_licenses.py` and produces the signed bundle and the disk image in
+`dist/`; `.github/workflows/release.yml` runs both scripts for both architectures, runs the
+imaging, measurement, JPEG and gallery tests with `build/venv/bin/pytest` against the
+OpenCV build and attaches the ffmpeg and libusb source tarballs to each release. OpenCV
+compiles take several minutes and memory; run one at a time, never beside another build
+or a large pytest run. Gallery thumbnails come from ffmpeg
+(`tower_borescope.capture.ffmpeg.first_frame`), not from OpenCV's videoio module, which the
+bundled OpenCV does not contain; new code must not use `cv2.VideoCapture` or
+`cv2.VideoWriter`. The downloadable application leaves out the
 `virtual-camera` extra (pyvirtualcam, GPL-2.0) and its View tab shows the virtual camera
 disabled; `scripts/setup.sh` installs the extra for development, and
 `uv sync --all-groups --extra virtual-camera` restores it after a plain `uv sync`.

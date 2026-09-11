@@ -6,14 +6,18 @@
 # The bundle carries everything the application needs: Python, Qt, OpenCV, an LGPL ffmpeg
 # and libusb. ffmpeg and libusb are built here from pinned release sources for the minimum
 # macOS version; the ffmpeg build enables only the devices, formats, codecs, filters and
-# protocols the application uses and links nothing but macOS system libraries. Qt modules
-# and Python packages the application never loads are left out, and the license texts of
+# protocols the application uses and links nothing but macOS system libraries. OpenCV
+# comes from scripts/build_opencv.sh, a build without FFmpeg or any other video I/O
+# library, installed into build/venv, the build environment that PyInstaller, the license
+# collection and the checks run from; the project .venv is not touched. Qt modules and
+# Python packages the application never loads are left out, and the license texts of
 # every bundled component are collected into Contents/Resources/licenses. The bundle is
 # signed with an ad-hoc signature; README.md describes the first launch on a machine that
 # downloads it. The disk image is named after the version and the processor architecture
 # and carries LICENSE and THIRD_PARTY_NOTICES.md next to the application. The source
 # tarballs stay in build/, where the release workflow picks them up.
 set -euo pipefail
+unset VIRTUAL_ENV
 
 ROOT="${0:A:h:h}"
 APP_NAME="Tower Borescope"
@@ -21,7 +25,9 @@ BUNDLE_ID="com.tylermiller.towerborescope"
 MIN_MACOS="13.0"
 BUILD="$ROOT/build"
 DIST="$ROOT/dist"
-PY="$ROOT/.venv/bin/python"
+VENV="$BUILD/venv"
+PY="$VENV/bin/python"
+PYTHON_VERSION="3.12"
 ARCH="$(uname -m)"
 MAKE_JOBS=4
 LIBUSB_VERSION="1.0.30"
@@ -48,21 +54,23 @@ COPYRIGHT="Copyright 2026 Tyler Miller. MIT License."
 # ffmpeg configuration: LGPL-2.1-or-later (no --enable-gpl, --enable-version3 or
 # --enable-nonfree) and no external libraries. Recording pipes MJPEG or BGR frames in,
 # stream-copies MJPEG or encodes H.264 with VideoToolbox, and adds AVFoundation audio
-# encoded by AudioToolbox; time-lapse assembly reads numbered PNG files. ffmpeg 9 reads
-# the "-" input through the fd protocol. The Intel build skips the standalone x86
-# assembly, which needs nasm.
+# encoded by AudioToolbox; time-lapse assembly reads numbered PNG files. Gallery
+# thumbnails read the first H.264 or MJPEG frame of a MOV, MP4, Matroska or AVI file,
+# scale it and write it to standard output as raw BGR pixels. ffmpeg 9 reads the "-"
+# input through the fd protocol. The Intel build skips the standalone x86 assembly, which
+# needs nasm.
 FFMPEG_CONFIGURE=(
   --disable-everything --disable-autodetect --disable-programs --enable-ffmpeg
   --disable-doc --disable-network --disable-debug
   --enable-avfoundation --enable-audiotoolbox --enable-videotoolbox --enable-zlib
   --enable-indev=avfoundation
-  --enable-demuxer=mjpeg,rawvideo,image2
-  --enable-decoder=mjpeg,png,rawvideo
+  --enable-demuxer=mjpeg,rawvideo,image2,mov,matroska,avi
+  --enable-decoder=mjpeg,png,rawvideo,h264
   --enable-decoder=pcm_f32be,pcm_f32le,pcm_s16be,pcm_s16le
   --enable-decoder=pcm_s24be,pcm_s24le,pcm_s32be,pcm_s32le
-  --enable-encoder=h264_videotoolbox,aac_at
-  --enable-muxer=mov,mp4,matroska,avi
-  --enable-parser=mjpeg,png
+  --enable-encoder=h264_videotoolbox,aac_at,rawvideo
+  --enable-muxer=mov,mp4,matroska,avi,rawvideo
+  --enable-parser=mjpeg,png,h264
   --enable-filter=scale,format,aformat,aresample,null,anull
   --enable-protocol=file,pipe,fd
   "--extra-cflags=-mmacosx-version-min=$MIN_MACOS -arch $ARCH"
@@ -95,17 +103,14 @@ PRUNED_QT=(
   QtVirtualKeyboard QtVirtualKeyboardQml QtQuick QtQml QtQmlMeta QtQmlModels
   QtQmlWorkerScript QtOpenGL
 )
+# Leftovers also cover the FFmpeg libraries and their GPL and LGPL dependencies that the
+# PyPI OpenCV wheels carry; the OpenCV build of scripts/build_opencv.sh has none.
 LEFTOVERS="QtVirtualKeyboard|QtQuick|QtQml|QtOpenGL|mypy|setuptools|yaml|click"
 LEFTOVERS="$LEFTOVERS|ast_serialize|librt|pyvirtualcam|_native_macos_obs|imageio"
 LEFTOVERS="$LEFTOVERS|/(_?pytest|rich|pygments|markdown_it)([-/.]|\$)"
-
-[[ -x "$PY" ]] || { echo "Environment missing. Run scripts/setup.sh first." >&2; exit 1; }
-VERSION="$("$PY" -c 'from importlib.metadata import version; print(version("tower-borescope"))')"
-APP="$DIST/$APP_NAME.app"
-PLIST="$APP/Contents/Info.plist"
-LICENSES="$APP/Contents/Resources/licenses"
-mkdir -p "$BUILD" "$DIST"
-echo "Building $APP_NAME $VERSION for $ARCH (macOS $MIN_MACOS or later)"
+LEFTOVERS="$LEFTOVERS|/lib(avcodec|avformat|avutil|avfilter|avdevice|swscale|swresample)"
+LEFTOVERS="$LEFTOVERS|/lib(postproc|x264|x265|rubberband|vidstab|gnutls|bluray|mp3lame)"
+LEFTOVERS="$LEFTOVERS|cv2/\\.dylibs"
 
 fail() {  # message
   echo "$1" >&2
@@ -117,6 +122,36 @@ fetch_verified() {  # url, file, sha256
   echo "$3  $2" | shasum -a 256 -c - >/dev/null \
     || fail "Checksum mismatch for $2; delete it and rerun"
 }
+
+command -v uv >/dev/null || fail "uv is required. Run scripts/setup.sh first."
+mkdir -p "$BUILD" "$DIST"
+
+# OpenCV: the wheel from scripts/build_opencv.sh, reused while its options are unchanged.
+OPENCV_WHEEL="$("$ROOT/scripts/build_opencv.sh" | tail -n 1)"
+OPENCV_OUT="${OPENCV_WHEEL:h}"
+[[ -f "$OPENCV_WHEEL" ]] || fail "scripts/build_opencv.sh produced no wheel"
+
+# Build environment: build/venv from uv.lock with the build and dev groups and no extras,
+# so pyvirtualcam stays out, and with the OpenCV build in place of the PyPI wheel.
+make_environment() {
+  (
+    cd "$ROOT"
+    UV_PROJECT_ENVIRONMENT="$VENV" uv sync --quiet --locked --python "$PYTHON_VERSION" \
+      --group build --group dev
+  )
+  uv pip uninstall --quiet --python "$PY" opencv-python
+  uv pip install --quiet --python "$PY" --no-deps "$OPENCV_WHEEL"
+  [[ "$("$PY" -c 'import cv2; print(cv2.getBuildInformation())')" \
+    == "$(<"$OPENCV_OUT/build-information.txt")" ]] \
+    || fail "build/venv does not import the OpenCV build from $OPENCV_OUT"
+}
+make_environment
+
+VERSION="$("$PY" -c 'from importlib.metadata import version; print(version("tower-borescope"))')"
+APP="$DIST/$APP_NAME.app"
+PLIST="$APP/Contents/Info.plist"
+LICENSES="$APP/Contents/Resources/licenses"
+echo "Building $APP_NAME $VERSION for $ARCH (macOS $MIN_MACOS or later)"
 
 # libusb: built from the release sources so the library runs on the minimum macOS
 # version. Homebrew bottles are built for the machine's own macOS release.
@@ -165,29 +200,40 @@ require_ffmpeg_feature() {  # listing flag, feature names
   listing="$("$FFMPEG" -hide_banner "$1" 2>/dev/null)"
   shift
   for name in "$@"; do
-    # Listing rows are a flag column and the name; -protocols rows are the name alone.
-    print -r -- "$listing" | grep -qE "^ [A-Zd.| ]{0,8} $name( |\$)" \
+    # Listing rows are a flag column and the name, or a comma-separated list of names
+    # such as "mov,mp4,m4a,3gp,3g2,mj2"; -protocols rows are the name alone.
+    print -r -- "$listing" | grep -qE "^ [A-Zd.| ]{0,8} ([^ ]*,)?$name(,| |\$)" \
       || fail "The bundled ffmpeg lacks $name"
   done
 }
-check_ffmpeg() {
+check_ffmpeg_features() {
   require_ffmpeg_feature -devices avfoundation
-  require_ffmpeg_feature -demuxers mjpeg rawvideo image2
-  require_ffmpeg_feature -decoders mjpeg png rawvideo pcm_f32be pcm_f32le pcm_s16be \
-    pcm_s16le pcm_s24be pcm_s24le pcm_s32be pcm_s32le
-  require_ffmpeg_feature -encoders h264_videotoolbox aac_at
-  require_ffmpeg_feature -muxers mov mp4 matroska avi
+  require_ffmpeg_feature -demuxers mjpeg rawvideo image2 mov matroska avi
+  require_ffmpeg_feature -decoders mjpeg png rawvideo h264 pcm_f32be pcm_f32le \
+    pcm_s16be pcm_s16le pcm_s24be pcm_s24le pcm_s32be pcm_s32le
+  require_ffmpeg_feature -encoders h264_videotoolbox aac_at rawvideo
+  require_ffmpeg_feature -muxers mov mp4 matroska avi rawvideo
   require_ffmpeg_feature -filters scale format aformat aresample null anull
   require_ffmpeg_feature -protocols file pipe fd
+}
+check_ffmpeg() {
+  check_ffmpeg_features
   # Recording pipes frames into standard input: a JPEG piped through a stream copy checks
-  # the input protocol, the MJPEG demuxer and decoder and the MOV muxer together.
+  # the input protocol, the MJPEG demuxer and decoder and the MOV muxer together. The
+  # gallery's first-frame reader then decodes that file through the MOV demuxer, the
+  # scale filter and the rawvideo encoder and muxer.
   local smoke="$FFMPEG_OUT/smoke.mov"
   local jpeg="import sys, cv2, numpy; image = numpy.zeros((16, 16, 3), numpy.uint8)"
+  local frame="from pathlib import Path; from tower_borescope.capture.ffmpeg import"
   jpeg="$jpeg; sys.stdout.buffer.write(cv2.imencode('.jpg', image)[1].tobytes())"
+  frame="$frame first_frame; frame = first_frame(Path('$smoke'), 8, 6)"
+  frame="$frame; assert frame is not None and frame.shape == (6, 8, 3)"
   rm -f "$smoke"
   "$PY" -c "$jpeg" | "$FFMPEG" -hide_banner -loglevel error -y -f mjpeg -i - \
     -c:v copy "$smoke" || fail "The bundled ffmpeg cannot stream-copy piped MJPEG"
   [[ -s "$smoke" ]] || fail "The bundled ffmpeg wrote no file from piped MJPEG"
+  TOWER_BORESCOPE_FFMPEG_PATH="$FFMPEG" "$PY" -c "$frame" \
+    || fail "The bundled ffmpeg cannot read the first frame of a MOV file"
   if "$FFMPEG" -hide_banner -buildconf | grep -qE -- "--enable-(gpl|version3|nonfree|lib)"
   then
     fail "The bundled ffmpeg is not an LGPL build without external libraries"
@@ -208,7 +254,9 @@ check_ffmpeg
 "$PY" -c "from pathlib import Path; from tower_borescope.app.icon import write_icon_png; \
 write_icon_png(Path('$BUILD/icon.png'))"
 ICONSET="$BUILD/icon.iconset"
-rm -rf "$ICONSET" && mkdir -p "$ICONSET"
+# Separate commands: set -e does not stop on a failure inside an && list.
+rm -rf "$ICONSET"
+mkdir -p "$ICONSET"
 for size in 16 32 128 256 512; do
   double=$((size * 2))
   sips -z "$size" "$size" "$BUILD/icon.png" --out "$ICONSET/icon_${size}x${size}.png" >/dev/null
@@ -249,8 +297,22 @@ if [[ -n "$leftovers" ]]; then
   fail "Excluded components remain in the bundle"
 fi
 
+# The bundled cv2 extension is the OpenCV build and links only macOS system libraries.
+check_opencv_bundle() {
+  local extension
+  extension="$(find "$APP/Contents/Frameworks/cv2" -maxdepth 1 -name "cv2*.so")"
+  [[ -n "$extension" && "$extension" != *$'\n'* ]] \
+    || fail "The bundle holds no single cv2 extension"
+  if otool -L "$extension" | tail -n +2 \
+    | grep -vqE "^[[:space:]]+/(usr/lib|System/Library)/"; then
+    fail "The bundled cv2 links a library outside macOS"
+  fi
+}
+check_opencv_bundle
+
 # License texts: this project, the Python distributions PyInstaller bundled, CPython,
-# Qt for Python, OpenCV (from its wheel), ffmpeg with its configure line, and libusb.
+# Qt for Python, the OpenCV build with its third-party libraries, ffmpeg with its
+# configure line, and libusb.
 collect_licenses() {
   local ffmpeg_dir="ffmpeg-$FFMPEG_VERSION"
   rm -rf "$LICENSES"
@@ -268,6 +330,8 @@ collect_licenses() {
     || fail "The GPL-3.0 text differs from the Qt for Python copy"
   cp "$LICENSES/LGPL-3.0.txt" "$LICENSES/qt-for-python/LGPL-3.0-only.txt"
   cp "$LICENSES/GPL-3.0.txt" "$LICENSES/qt-for-python/GPL-3.0-only.txt"
+  cp -R "$OPENCV_OUT/licenses" "$LICENSES/opencv"
+  cp "$OPENCV_OUT/build-information.txt" "$OPENCV_OUT/cmake-args.txt" "$LICENSES/opencv/"
   tar -xjf "$LIBUSB_TARBALL" -C "$LICENSES/libusb" --strip-components 1 \
     "libusb-$LIBUSB_VERSION/COPYING"
   # PySide6 and shiboken6 wheels carry no license file; their texts are qt-for-python/.
@@ -331,14 +395,18 @@ run_with_limit "$TEST_SHOT_SECONDS" "$APP/Contents/MacOS/$APP_NAME" --test-shot 
 [[ -s "$SHOT" ]] || fail "The built application did not render a window"
 echo "Built $APP"
 
-STAGE="$BUILD/dmg"
-rm -rf "$STAGE" && mkdir -p "$STAGE"
+# The disk image is staged in a new folder on every build, so files left in an earlier
+# staging folder can never reach the image, and the folder is removed afterwards so no
+# copy of the application stays behind where it could be opened.
+STAGE="$(mktemp -d "$BUILD/dmg.XXXXXX")"
 cp -R "$APP" "$STAGE/"
 cp "$ROOT/LICENSE" "$ROOT/THIRD_PARTY_NOTICES.md" "$STAGE/"
 ln -s /Applications "$STAGE/Applications"
 DMG="$DIST/Tower-Borescope-$VERSION-$ARCH.dmg"
 rm -f "$DMG"
 hdiutil create -quiet -volname "$APP_NAME" -srcfolder "$STAGE" -ov -format UDZO "$DMG"
+# The image is complete at this point; a staging folder that resists removal only warns.
+rm -rf "$STAGE" || echo "Warning: could not remove the staging folder $STAGE" >&2
 echo "Built $DMG"
 
 if [[ "${1:-}" != "--no-install" ]]; then

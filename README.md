@@ -73,11 +73,19 @@ virtual camera. `uv run tower-borescope grab frame.jpg`, `stack still.png` and
 ## Building the application
 
 `scripts/build_app.sh` builds `Tower Borescope.app` for the architecture of the machine. It
+needs uv and Xcode Command Line Tools, plus `brew install nasm` on an Intel Mac. It
 compiles libusb and an LGPL ffmpeg from pinned, checksum-verified release sources into
 `build/`; the ffmpeg build contains only the devices, formats, codecs, filters and protocols
-the application uses and links only macOS system libraries. PyInstaller then packs the
-application, unused Qt modules and Python packages are left out, and the license texts of
-every bundled component are collected into `Contents/Resources/licenses`. The script signs
+the application uses and links only macOS system libraries. OpenCV comes from
+`scripts/build_opencv.sh`, which compiles the opencv-python sdist with only the modules the
+application uses and without FFmpeg or any other video library, because every opencv-python
+wheel on PyPI for macOS links GPL-licensed FFmpeg libraries. The first OpenCV build takes a
+few minutes on an Apple silicon Mac and is cached in `build/` afterwards. The script creates
+its own environment in `build/venv` from `uv.lock`, installs that OpenCV build there and
+leaves the development environment in `.venv`, which keeps the PyPI wheel, unchanged.
+PyInstaller then packs the application, unused Qt modules and Python packages are left
+out, and the license texts of every bundled component are collected into
+`Contents/Resources/licenses`. The script signs
 the bundle, checks that it renders a window, writes the disk image with `LICENSE` and
 `THIRD_PARTY_NOTICES.md` next to the application into `dist/` and installs the application
 into `~/Applications`. The GitHub release workflow runs the same script on Apple silicon and

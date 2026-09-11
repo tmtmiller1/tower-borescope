@@ -13,9 +13,26 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QMessageBox, QPushButton
 
 from tower_borescope.app.dialogs import gallery
-from tower_borescope.app.dialogs.gallery import GalleryWindow, describe_capture, thumbnail
+from tower_borescope.app.dialogs.gallery import (
+    THUMB_SIZE,
+    GalleryWindow,
+    describe_capture,
+    thumbnail,
+)
+from tower_borescope.capture import ffmpeg
+from tower_borescope.capture.recorder import Recorder, RecorderOptions
 from tower_borescope.capture.storage import sidecar_path, write_sidecar
 from tower_borescope.config import data_paths
+
+VIDEO_WIDTH = 320
+VIDEO_HEIGHT = 240
+VIDEO_BGR = (40, 160, 90)
+VIDEO_FRAMES = 5
+COLOR_TOLERANCE = 12
+
+needs_ffmpeg = pytest.mark.skipif(
+    ffmpeg.find_ffmpeg() is None, reason="ffmpeg is not installed"
+)
 
 
 @pytest.fixture
@@ -119,5 +136,44 @@ def test_refresh_picks_up_new_captures(qapp, captures):
 def test_unreadable_capture_gets_a_placeholder_thumbnail(qapp, tmp_path):
     broken = tmp_path / "scope_broken.mp4"
     broken.write_bytes(b"not a video")
+    assert gallery._video_pixmap(broken, THUMB_SIZE).isNull()
     assert not thumbnail(broken).isNull()
     assert not thumbnail(tmp_path / "missing.png").isNull()
+
+
+def test_video_without_ffmpeg_gets_a_placeholder_thumbnail(qapp, tmp_path, monkeypatch):
+    clip = tmp_path / "scope_clip.mov"
+    clip.write_bytes(b"")
+    monkeypatch.setattr(ffmpeg, "find_ffmpeg", lambda: None)
+    assert gallery._video_pixmap(clip, THUMB_SIZE).isNull()
+    assert not thumbnail(clip).isNull()
+
+
+def _record_solid_video(path, raw):
+    frame = np.full((VIDEO_HEIGHT, VIDEO_WIDTH, 3), VIDEO_BGR, np.uint8)
+    jpeg = cv2.imencode(".jpg", frame)[1].tobytes()
+    video = Recorder(RecorderOptions(path, raw=raw, size=(VIDEO_WIDTH, VIDEO_HEIGHT)))
+    for _ in range(VIDEO_FRAMES):
+        video.write(jpeg, frame)
+    return video.close()
+
+
+@needs_ffmpeg
+@pytest.mark.parametrize(
+    ("name", "raw"), [("scope_processed.mp4", False), ("scope_raw.mov", True)]
+)
+def test_video_thumbnail_is_the_first_frame_in_a_red_frame(qapp, name, raw):
+    path = data_paths().movies / name
+    recorded = _record_solid_video(path, raw)
+    if not recorded and not raw:
+        pytest.skip("this ffmpeg cannot encode H.264 with VideoToolbox")
+    assert recorded
+    image = gallery._video_pixmap(path, THUMB_SIZE).toImage()
+    assert (image.width(), image.height()) == (THUMB_SIZE.width(), THUMB_SIZE.height())
+    border = image.pixelColor(0, 0)
+    assert (border.blue(), border.green(), border.red()) == gallery.VIDEO_FRAME_COLOR
+    center = image.pixelColor(image.width() // 2, image.height() // 2)
+    channels = (center.blue(), center.green(), center.red())
+    for channel, expected in zip(channels, VIDEO_BGR, strict=True):
+        assert abs(channel - expected) <= COLOR_TOLERANCE
+    assert not thumbnail(path).isNull()

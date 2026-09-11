@@ -23,7 +23,7 @@ Pytest suite for tower_borescope, using synthetic media and test doubles instead
 - `test_ai_schema.py`: analysis, issue and scale data models.
 - `test_ai_settings.py`: AI configuration defaults, environment values and settings round trip.
 - `test_app_dialogs_ai_settings.py`: AI settings dialog sections, saving and key storage through a substituted Keychain.
-- `test_app_dialogs_gallery.py`: capture gallery listing, sidecar details and deletion.
+- `test_app_dialogs_gallery.py`: capture gallery listing, sidecar details, deletion, placeholder thumbnails and video thumbnails read by ffmpeg from a processed MP4 and a raw MOV recorded at run time.
 - `test_app_dialogs_qr_dialog.py`: phone monitor QR code dialog painting.
 - `test_app_frame_info.py`: processed frame and meter record.
 - `test_app_icon.py`: drawn application icon size, transparency and repeatability.
@@ -57,7 +57,7 @@ Pytest suite for tower_borescope, using synthetic media and test doubles instead
 - `test_app_window_measure_controller.py`: measurement tools, units, calibration and AI scale estimates.
 - `test_app_window_menus.py`: menu structure, actions and shortcuts.
 - `test_app_window_share_controller.py`: phone monitor and virtual camera controls, including the disabled virtual camera when pyvirtualcam is missing.
-- `test_capture_ffmpeg.py`: ffmpeg discovery and microphone device parsing.
+- `test_capture_ffmpeg.py`: ffmpeg discovery, microphone device parsing and the first-frame reader's command line, raw BGR decoding, short reads, timeouts and missing ffmpeg.
 - `test_capture_recorder.py`: MP4 and raw MOV recording, frame padding and the audio command line.
 - `test_capture_storage.py`: capture file naming, sidecars and capture listing.
 - `test_check_limits.py`: every rule of `scripts/check_limits.py` on small sources, the exit statuses and report format, and a clean run over the repository.

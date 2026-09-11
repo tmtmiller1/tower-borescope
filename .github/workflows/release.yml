@@ -4,8 +4,9 @@ name: Release
 # A tag such as v0.1.0 publishes both images on a GitHub release together with the
 # ffmpeg and libusb source tarballs the build compiled, which are the corresponding
 # source for those LGPL components. A manual run only stores them as workflow artifacts.
-# `uv sync --all-groups` installs no extras, so pyvirtualcam (the virtual-camera extra)
-# stays out of the application.
+# scripts/build_app.sh creates its build environment in build/venv from uv.lock without
+# extras, so pyvirtualcam (the virtual-camera extra) stays out of the application, and
+# installs the OpenCV wheel from scripts/build_opencv.sh, which contains no FFmpeg.
 on:
   push:
     tags: ["v*"]
@@ -18,7 +19,11 @@ jobs:
   build:
     name: Build ${{ matrix.arch }} disk image
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 45
+    # The OpenCV compile takes about three minutes with four jobs on an M1 Pro; a first
+    # uncached build on a three-processor runner, the slower Intel runner included, is
+    # allowed several times that, next to about half an hour for ffmpeg, libusb, the
+    # bundle and the tests.
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
@@ -35,11 +40,40 @@ jobs:
         with:
           version: "latest"
 
-      - name: Install the environment
-        run: uv sync --all-groups
+      - name: Install nasm for libjpeg-turbo's SIMD code in the Intel OpenCV build
+        if: matrix.arch == 'x86_64'
+        run: brew list nasm >/dev/null 2>&1 || brew install nasm
+
+      - name: Compute the OpenCV cache key
+        # The key names the OpenCV version, the architecture and a hash of the options.
+        id: opencv
+        run: echo "key=$(scripts/build_opencv.sh --key)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore the OpenCV build
+        uses: actions/cache@v4
+        with:
+          path: build/${{ steps.opencv.outputs.key }}
+          key: ${{ steps.opencv.outputs.key }}
+
+      - name: Build OpenCV without FFmpeg
+        run: scripts/build_opencv.sh
 
       - name: Build the bundle and the disk image
         run: scripts/build_app.sh --no-install
+
+      - name: Test imaging, measurement, JPEG and gallery code against the OpenCV build
+        # build/venv holds the OpenCV build; the gallery tests read thumbnails with the
+        # bundled ffmpeg. A failure here fails the release.
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          # The ffmpeg output folder is build/ffmpeg-<version>-<arch>; the pattern keeps
+          # this step correct when scripts/build_app.sh moves to a new ffmpeg release.
+          ffmpeg_dirs=(build/ffmpeg-*-${{ matrix.arch }})
+          [ -x "${ffmpeg_dirs[0]}/ffmpeg" ] || { echo "No bundled ffmpeg build found"; exit 1; }
+          export TOWER_BORESCOPE_FFMPEG_PATH="$PWD/${ffmpeg_dirs[0]}/ffmpeg"
+          build/venv/bin/pytest tests/test_imaging_*.py tests/test_measure_*.py \
+            tests/test_jpeg.py tests/test_app_dialogs_gallery.py -m "not timing"
 
       - name: Keep the window picture from the built application
         uses: actions/upload-artifact@v4

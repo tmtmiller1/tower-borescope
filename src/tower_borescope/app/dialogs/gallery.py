@@ -27,6 +27,7 @@ from PySide6.QtWidgets import (
 )
 
 from tower_borescope.app.style import CONTROL
+from tower_borescope.capture.ffmpeg import first_frame
 from tower_borescope.capture.storage import (
     VIDEO_EXTENSIONS,
     list_captures,
@@ -66,13 +67,10 @@ def is_video(path: Path) -> bool:
 
 
 def _video_pixmap(path: Path, size: QSize) -> QPixmap:
-    """First frame of a video with a red frame marking it as a video."""
-    capture = cv2.VideoCapture(str(path))
-    ok, frame = capture.read()
-    capture.release()
-    if not ok:
+    """First frame of a video, decoded by ffmpeg, in a red frame marking it as video."""
+    frame = first_frame(path, size.width(), size.height())
+    if frame is None:
         return QPixmap()
-    frame = cv2.resize(frame, (size.width(), size.height()))
     corner = (size.width() - 1, size.height() - 1)
     cv2.rectangle(frame, (0, 0), corner, VIDEO_FRAME_COLOR, VIDEO_FRAME_THICKNESS)
     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)

@@ -1,4 +1,5 @@
-"""Locating the ffmpeg executable and listing the microphones it can record from."""
+"""Locating the ffmpeg executable, listing the microphones it can record from and reading
+the first frame of a video."""
 
 from __future__ import annotations
 
@@ -7,11 +8,16 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
+import numpy as np
+
 from tower_borescope.config import bundled_file, env_value
+from tower_borescope.image_types import BgrImage
 
 FFMPEG_PATH_VARIABLE = "FFMPEG_PATH"
 BUNDLED_FFMPEG = ("bin", "ffmpeg")
 LIST_TIMEOUT_SECONDS = 10.0
+FRAME_TIMEOUT_SECONDS = 5.0
+BGR_CHANNELS = 3
 _AUDIO_SECTION_MARKER = "audio devices"
 _INDEX_OPENER = "] ["
 _INDEX_CLOSER = "] "
@@ -102,3 +108,55 @@ def list_audio_devices() -> list[AudioDevice]:
     except (OSError, subprocess.TimeoutExpired):
         return []
     return _parse_audio_devices(completed.stderr)
+
+
+def first_frame_command(ffmpeg: str, path: Path, width: int, height: int) -> list[str]:
+    """ffmpeg command that writes the first video frame as raw BGR bytes to stdout.
+
+    Args:
+        ffmpeg: ffmpeg executable.
+        path: Video file.
+        width: Output frame width in pixels.
+        height: Output frame height in pixels.
+
+    Returns:
+        The command line.
+    """
+    command = [ffmpeg, "-hide_banner", "-loglevel", "error", "-nostdin"]
+    command += ["-i", str(path), "-an", "-frames:v", "1"]
+    command += ["-vf", f"scale={width}:{height}"]
+    return [*command, "-f", "rawvideo", "-pix_fmt", "bgr24", "-"]
+
+
+def first_frame(path: Path, width: int, height: int) -> BgrImage | None:
+    """Decode the first frame of a video, scaled to ``width`` by ``height`` pixels.
+
+    ffmpeg decodes and scales the frame and writes it to its standard output, so the
+    application needs no video decoder of its own.
+
+    Args:
+        path: Video file.
+        width: Frame width in pixels.
+        height: Frame height in pixels.
+
+    Returns:
+        A writable BGR frame, or None when ffmpeg is missing, cannot start, times out or
+        delivers less than one frame.
+    """
+    ffmpeg = find_ffmpeg()
+    if ffmpeg is None:
+        return None
+    try:
+        completed = subprocess.run(
+            first_frame_command(ffmpeg, path, width, height),
+            capture_output=True,
+            timeout=FRAME_TIMEOUT_SECONDS,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    size = width * height * BGR_CHANNELS
+    if len(completed.stdout) < size:
+        return None
+    pixels = np.frombuffer(completed.stdout, dtype=np.uint8, count=size)
+    return pixels.reshape(height, width, BGR_CHANNELS).copy()
