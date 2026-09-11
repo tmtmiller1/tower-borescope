@@ -3,11 +3,16 @@
 The virtual camera needs OBS with its camera extension installed. Without it,
 pyvirtualcam raises ``RuntimeError`` on open; the pipeline then clears the request and
 reports the reason instead of failing.
+
+pyvirtualcam is an optional dependency (the ``virtual-camera`` extra) and the
+downloadable application does not include it; ``vcam_available`` tells the window
+whether to offer the control at all.
 """
 
 from __future__ import annotations
 
-from typing import Protocol
+from importlib.util import find_spec
+from typing import Final, Protocol
 
 from tower_borescope.app.pipeline.events import PipelineEvents
 from tower_borescope.app.pipeline.state import PipelineState
@@ -16,6 +21,11 @@ from tower_borescope.image_types import BgrImage
 from tower_borescope.remote.server import RemoteServer
 
 OBS_HINT = "Virtual camera needs OBS (with its virtual camera) installed: "
+VCAM_MODULE: Final = "pyvirtualcam"
+VCAM_MISSING_TEXT: Final = (
+    "Virtual camera is not included in this build. "
+    "It needs the source version with the virtual-camera extra."
+)
 ERROR_TEXT_LIMIT = 80
 # pyvirtualcam documents RuntimeError for a missing backend and ValueError or TypeError
 # for a frame that does not match the camera; OSError covers a device that went away.
@@ -37,6 +47,16 @@ class CameraSink(Protocol):
     def close(self) -> None:
         """Release the device."""
         ...
+
+
+def vcam_available() -> bool:
+    """Whether pyvirtualcam is installed.
+
+    Returns:
+        True when the ``pyvirtualcam`` package can be imported; False in the
+        downloadable application and in a source checkout without the extra.
+    """
+    return find_spec(VCAM_MODULE) is not None
 
 
 def open_camera(width: int, height: int) -> CameraSink:

@@ -73,6 +73,10 @@ Rotation, mirroring, grid and zoom; the phone monitor, which serves the live vie
 and record buttons to any browser on the same network through a QR code; and the virtual camera,
 which requires OBS.
 
+The downloadable application does not include the virtual camera: its button is disabled and
+a note below it names the reason. Running from source with `uv sync --extra virtual-camera`
+installs pyvirtualcam and enables the button.
+
 ## Keyboard shortcuts
 
 | Keys | Action |

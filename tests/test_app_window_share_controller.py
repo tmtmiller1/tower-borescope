@@ -7,7 +7,11 @@ from __future__ import annotations
 import time
 import urllib.request
 
+import pytest
+
 from conftest import wait_until
+from tower_borescope.app.pipeline import outputs
+from tower_borescope.app.pipeline.outputs import VCAM_MISSING_TEXT
 from tower_borescope.app.pipeline.thread import Pipeline
 from tower_borescope.app.window import share_controller
 from tower_borescope.app.window.view_controller import ROTATE_BLOCKED_TOAST
@@ -90,6 +94,26 @@ def test_virtual_camera_starts_or_refuses_gracefully(window):
         assert wait_until(lambda: not state.want_vcam)
     else:
         assert not window.share.group.vcam_btn.isChecked()
+
+
+@pytest.fixture
+def window_without_pyvirtualcam(monkeypatch, request):
+    """The window fixture built while pyvirtualcam appears not to be installed."""
+    monkeypatch.setattr(outputs, "find_spec", lambda name: None)
+    return request.getfixturevalue("window")
+
+
+def test_virtual_camera_is_disabled_without_pyvirtualcam(window_without_pyvirtualcam):
+    group = window_without_pyvirtualcam.share.group
+    assert not group.vcam_btn.isEnabled() and not group.vcam_btn.isChecked()
+    assert group.vcam_btn.toolTip() == VCAM_MISSING_TEXT
+    assert not group.vcam_label.isHidden()
+    assert group.vcam_label.text() == VCAM_MISSING_TEXT
+
+
+def test_virtual_camera_is_offered_with_pyvirtualcam(window):
+    group = window.share.group
+    assert group.vcam_btn.isEnabled() and group.vcam_label.isHidden()
 
 
 def test_rotation_mirror_grid_and_zoom(window):

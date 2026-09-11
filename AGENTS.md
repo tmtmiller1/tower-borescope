@@ -10,7 +10,8 @@ tooling enforces are restated here so the repository stays self-contained.
   `remote`, `ai` and `app`; shared modules `config`, `errors`, `image_types`, `jpeg` and `cli`.
 - `tests/`: pytest suite. `conftest.py` sandboxes every data location; `synthetic.py` generates
   frames and USB packets; `fakes.py` holds the camera reader and AI backend doubles.
-- `scripts/`: environment setup, application bundle build and the limits checker.
+- `scripts/`: environment setup, application bundle build, license collection and the limits
+  checker.
 - `docs/`: protocol reference, user guide and plans.
 
 ## Commands
@@ -34,8 +35,15 @@ scripts/build_app.sh
 exits 1 on any finding; CI runs it after radon.
 `--camera` tests need the borescope attached and no running Tower Borescope process.
 `--live-ai` tests need a local Ollama server with a vision model. `scripts/build_app.sh` needs
-the `build` dependency group (`uv sync --all-groups`) and produces the signed bundle and the
-disk image in `dist/`; `.github/workflows/release.yml` runs it for both architectures.
+the `build` dependency group (`uv sync --all-groups`). It compiles libusb and an LGPL ffmpeg
+from pinned release sources into `build/` with at most four make jobs, leaves unused Qt
+modules and Python packages out of the bundle, collects the license texts through
+`scripts/collect_licenses.py` and produces the signed bundle and the disk image in `dist/`;
+`.github/workflows/release.yml` runs it for both architectures and attaches the ffmpeg and
+libusb source tarballs to each release. The downloadable application leaves out the
+`virtual-camera` extra (pyvirtualcam, GPL-2.0) and its View tab shows the virtual camera
+disabled; `scripts/setup.sh` installs the extra for development, and
+`uv sync --all-groups --extra virtual-camera` restores it after a plain `uv sync`.
 Tests marked `timing` assert real-time frame rates. CI and mutation runs leave them out,
 so `uv run pytest -m timing` runs them on a development machine.
 `uv run mutmut run --max-children 2` mutates the whole package and keeps its results in

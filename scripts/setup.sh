@@ -1,7 +1,8 @@
 #!/bin/zsh
 # One-time environment setup: Homebrew libraries, the uv environment and a local .env file.
 # The .env file records the Homebrew locations of libusb and ffmpeg so that no machine path
-# is written into the source code.
+# is written into the source code. The environment includes the virtual-camera extra
+# (pyvirtualcam), which the downloadable application leaves out.
 set -euo pipefail
 
 ROOT="${0:A:h:h}"
@@ -13,7 +14,7 @@ for package in libusb ffmpeg; do
 done
 
 cd "$ROOT"
-uv sync --all-groups
+uv sync --all-groups --extra virtual-camera
 
 if [[ ! -f .env ]]; then
   prefix="$(brew --prefix)"

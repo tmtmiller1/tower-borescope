@@ -8,6 +8,7 @@ from typing import Final
 from PySide6.QtCore import QObject, Qt, Signal
 
 from tower_borescope.app.dialogs.qr_dialog import QrDialog
+from tower_borescope.app.pipeline.outputs import VCAM_MISSING_TEXT, vcam_available
 from tower_borescope.app.window.context import WindowContext
 from tower_borescope.app.window.view_panel import REMOTE_OFF_TEXT, ShareGroup
 from tower_borescope.remote.server import RemoteServer
@@ -42,6 +43,8 @@ class ShareController(QObject):
         self.qr: QrDialog | None = None
         self._requests = {SNAPSHOT_REQUEST: snapshot, RECORD_REQUEST: toggle_recording}
         self.group = ShareGroup(self.toggle_remote, self.toggle_vcam)
+        if not vcam_available():
+            self.group.disable_vcam(VCAM_MISSING_TEXT)
         self.remote_request.connect(
             self._handle_request, Qt.ConnectionType.QueuedConnection
         )

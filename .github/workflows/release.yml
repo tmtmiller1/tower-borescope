@@ -1,8 +1,11 @@
 name: Release
 
 # Builds the application bundle and disk image for Apple silicon and Intel Macs.
-# A tag such as v0.1.0 publishes both images on a GitHub release; a manual run only
-# stores them as workflow artifacts.
+# A tag such as v0.1.0 publishes both images on a GitHub release together with the
+# ffmpeg and libusb source tarballs the build compiled, which are the corresponding
+# source for those LGPL components. A manual run only stores them as workflow artifacts.
+# `uv sync --all-groups` installs no extras, so pyvirtualcam (the virtual-camera extra)
+# stays out of the application.
 on:
   push:
     tags: ["v*"]
@@ -51,6 +54,17 @@ jobs:
           path: dist/*.dmg
           if-no-files-found: error
 
+      - name: Store the ffmpeg and libusb source tarballs
+        # Both architectures build from the same checksum-verified tarballs; one copy.
+        if: matrix.arch == 'arm64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-tarballs
+          path: |
+            build/ffmpeg-*.tar.xz
+            build/libusb-*.tar.bz2
+          if-no-files-found: error
+
   publish:
     name: Publish the GitHub release
     needs: build
@@ -64,8 +78,17 @@ jobs:
           merge-multiple: true
           path: images
 
-      - name: Create the release with both images attached
+      - name: Collect the source tarballs
+        uses: actions/download-artifact@v4
+        with:
+          name: source-tarballs
+          path: sources
+
+      - name: Create the release with both images and the source tarballs attached
         uses: softprops/action-gh-release@v2
         with:
-          files: images/*.dmg
+          files: |
+            images/*.dmg
+            sources/*
+          fail_on_unmatched_files: true
           generate_release_notes: true

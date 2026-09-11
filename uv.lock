@@ -1352,16 +1352,20 @@ dependencies = [
     { name = "pyside6" },
     { name = "python-dotenv" },
     { name = "pyusb" },
-    { name = "pyvirtualcam" },
     { name = "qrcode" },
+]
+
+[package.optional-dependencies]
+virtual-camera = [
+    { name = "pyvirtualcam" },
 ]
 
 [package.dev-dependencies]
 build = [
-    { name = "imageio-ffmpeg" },
     { name = "pyinstaller" },
 ]
 dev = [
+    { name = "imageio-ffmpeg" },
     { name = "mutmut" },
     { name = "mypy" },
     { name = "pytest" },
@@ -1378,16 +1382,15 @@ requires-dist = [
     { name = "pyside6", specifier = "==6.11.2" },
     { name = "python-dotenv", specifier = ">=1.0.1" },
     { name = "pyusb", specifier = "==1.3.1" },
-    { name = "pyvirtualcam", specifier = "==0.15.0" },
+    { name = "pyvirtualcam", marker = "extra == 'virtual-camera'", specifier = "==0.15.0" },
     { name = "qrcode", specifier = "==8.2" },
 ]
+provides-extras = ["virtual-camera"]
 
 [package.metadata.requires-dev]
-build = [
-    { name = "imageio-ffmpeg", specifier = "==0.6.0" },
-    { name = "pyinstaller", specifier = "==6.22.2" },
-]
+build = [{ name = "pyinstaller", specifier = "==6.22.2" }]
 dev = [
+    { name = "imageio-ffmpeg", specifier = "==0.6.0" },
     { name = "mutmut", specifier = ">=3.0" },
     { name = "mypy", specifier = ">=1.13" },
     { name = "pytest", specifier = ">=8.3" },

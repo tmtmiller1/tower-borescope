@@ -29,7 +29,7 @@ Pytest suite for tower_borescope, using synthetic media and test doubles instead
 - `test_app_icon.py`: drawn application icon size, transparency and repeatability.
 - `test_app_main.py`: application start-up and the test capture option.
 - `test_app_pipeline_automation.py`: time-lapse assembly, automatic stacking and motion snapshots.
-- `test_app_pipeline_outputs.py`: phone monitor publishing and virtual camera handling.
+- `test_app_pipeline_outputs.py`: phone monitor publishing, virtual camera handling and the pyvirtualcam lookup.
 - `test_app_pipeline_processor.py`: filter chain, live filters, meters and frame rate with every filter on.
 - `test_app_pipeline_recording.py`: recording lifecycle, pre-roll and stop on mode change.
 - `test_app_pipeline_state.py`: pipeline state defaults, settings loading and capture metadata.
@@ -56,12 +56,13 @@ Pytest suite for tower_borescope, using synthetic media and test doubles instead
 - `test_app_window_main_window.py`: streaming, panels, filters, captures, resolution switching, geometry and shortcuts.
 - `test_app_window_measure_controller.py`: measurement tools, units, calibration and AI scale estimates.
 - `test_app_window_menus.py`: menu structure, actions and shortcuts.
-- `test_app_window_share_controller.py`: phone monitor and virtual camera controls.
+- `test_app_window_share_controller.py`: phone monitor and virtual camera controls, including the disabled virtual camera when pyvirtualcam is missing.
 - `test_capture_ffmpeg.py`: ffmpeg discovery and microphone device parsing.
 - `test_capture_recorder.py`: MP4 and raw MOV recording, frame padding and the audio command line.
 - `test_capture_storage.py`: capture file naming, sidecars and capture listing.
 - `test_check_limits.py`: every rule of `scripts/check_limits.py` on small sources, the exit statuses and report format, and a clean run over the repository.
 - `test_cli.py`: command line parsing, error handling and the opt-in camera captures.
+- `test_collect_licenses.py`: `scripts/collect_licenses.py` on a generated environment and bundle: TOC reading, name normalization, removed files, copied license files, the distribution listing and the exit status.
 - `test_config.py`: environment values, data paths and the settings store.
 - `test_device_camera.py`: camera open, retry, mode probe, frame reads and hardware checks.
 - `test_device_constants.py`: resolution mode table and protocol constants.

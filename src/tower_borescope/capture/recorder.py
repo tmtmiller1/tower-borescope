@@ -2,7 +2,8 @@
 
 Raw recordings stream-copy the camera's MJPEG frames into a QuickTime ``.mov`` file,
 bit for bit. Processed recordings pipe BGR pixels to the VideoToolbox H.264 encoder. An
-optional AVFoundation microphone adds an AAC audio track.
+optional AVFoundation microphone adds an AAC audio track from the macOS AudioToolbox
+encoder (``aac_at``).
 """
 
 from __future__ import annotations
@@ -28,6 +29,8 @@ AUDIO_SETTLE_SECONDS = 0.3
 THREAD_QUEUE_SIZE = "1024"
 VIDEO_BITRATE = "6M"
 AUDIO_BITRATE = "96k"
+# Apple's AudioToolbox AAC encoder, present in the bundled ffmpeg and in Homebrew ffmpeg.
+AUDIO_ENCODER = "aac_at"
 INSTALL_HINT = "Recording needs ffmpeg; install it with: brew install ffmpeg"
 
 
@@ -71,10 +74,10 @@ def _video_input(options: RecorderOptions) -> list[str]:
 
 
 def _audio_input(device: int) -> list[str]:
-    """ffmpeg arguments adding an AVFoundation microphone as an AAC track."""
+    """ffmpeg arguments adding an AVFoundation microphone as an AudioToolbox AAC track."""
     source = ["-thread_queue_size", THREAD_QUEUE_SIZE, "-f", "avfoundation"]
     mapping = ["-i", f":{device}", "-map", "0:v", "-map", "1:a"]
-    return [*source, *mapping, "-c:a", "aac", "-b:a", AUDIO_BITRATE]
+    return [*source, *mapping, "-c:a", AUDIO_ENCODER, "-b:a", AUDIO_BITRATE]
 
 
 def _video_output(raw: bool) -> list[str]:

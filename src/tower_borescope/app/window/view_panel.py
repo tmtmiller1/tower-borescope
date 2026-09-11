@@ -90,6 +90,7 @@ class ShareGroup:
         remote_btn: Checkable phone monitor button.
         remote_label: Phone monitor address or "Off".
         vcam_btn: Checkable virtual camera button.
+        vcam_label: Reason the virtual camera is unavailable; hidden while it is offered.
         box: The SHARE group box.
     """
 
@@ -108,7 +109,23 @@ class ShareGroup:
             tip="Makes the scope a webcam for Zoom / FaceTime / QuickTime. "
             "Needs OBS installed.",
         )
-        self.box = group("SHARE", self.remote_btn, self.remote_label, self.vcam_btn)
+        self.vcam_label = small_label()
+        self.vcam_label.setHidden(True)
+        self.box = group(
+            "SHARE", self.remote_btn, self.remote_label, self.vcam_btn, self.vcam_label
+        )
+
+    def disable_vcam(self, reason: str) -> None:
+        """Turn the virtual camera button off and show why it is unavailable.
+
+        Args:
+            reason: Status text, also used as the button tooltip.
+        """
+        self.vcam_btn.setChecked(False)
+        self.vcam_btn.setEnabled(False)
+        self.vcam_btn.setToolTip(reason)
+        self.vcam_label.setText(reason)
+        self.vcam_label.setHidden(False)
 
 
 def view_tab(orientation: OrientationGroup, share: ShareGroup) -> QWidget:

@@ -24,5 +24,5 @@ Main window of the application, with the sidebar panels, the menus and the contr
 - `measure_controller.py`: measurement tools, units, calibration, the focus-locked scale status and the AI scale estimate.
 - `view_panel.py`: View tab groups for orientation and zoom, and for sharing.
 - `view_controller.py`: rotation, mirror, grid, the sidebar and full screen.
-- `share_controller.py`: phone monitor with its QR code, and the virtual camera.
+- `share_controller.py`: phone monitor with its QR code, and the virtual camera, whose control is disabled with a note when pyvirtualcam is not installed.
 - `recent_panel.py`: thumbnails of the latest captures below the tabs.

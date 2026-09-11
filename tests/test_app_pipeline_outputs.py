@@ -5,6 +5,7 @@ from __future__ import annotations
 import pyvirtualcam
 
 from synthetic import textured_frame
+from tower_borescope.app.pipeline import outputs as outputs_module
 from tower_borescope.app.pipeline.events import PipelineEvents
 from tower_borescope.app.pipeline.outputs import OBS_HINT, FrameOutputs
 from tower_borescope.app.pipeline.state import PipelineState
@@ -144,6 +145,12 @@ def test_missing_backend_is_refused_gracefully(monkeypatch):
     assert not outputs.vcam_active and not state.want_vcam
     assert calls[0] == ("vcam_changed", False)
     assert calls[1] == ("notice", OBS_HINT + "no virtual camera backend found")
+
+
+def test_vcam_available_follows_the_module_lookup(monkeypatch):
+    assert outputs_module.vcam_available()
+    monkeypatch.setattr(outputs_module, "find_spec", lambda name: None)
+    assert not outputs_module.vcam_available()
 
 
 def test_real_virtual_camera_starts_or_refuses_without_raising():

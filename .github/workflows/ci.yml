@@ -23,9 +23,11 @@ jobs:
           enable-cache: true
 
       - name: Install the environment
-        run: uv sync --all-groups
+        # The virtual-camera extra keeps the pyvirtualcam tests running; the release
+        # workflow leaves it out of the application.
+        run: uv sync --all-groups --extra virtual-camera
 
-      - name: Point the tests at the static ffmpeg from the build group
+      - name: Point the tests at the static ffmpeg from the dev group
         run: |
           echo "TOWER_BORESCOPE_FFMPEG_PATH=$(uv run python -c \
             'import imageio_ffmpeg; print(imageio_ffmpeg.get_ffmpeg_exe())')" \

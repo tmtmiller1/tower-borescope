@@ -22,7 +22,7 @@ AUDIO_ARGUMENT_RUNS = (
     ("-f", "rawvideo", "-pix_fmt", "bgr24", "-s", "640x480"),
     ("-framerate", "15", "-i", "-"),
     ("-f", "avfoundation", "-i", ":2", "-map", "0:v"),
-    ("-map", "1:a", "-c:a", "aac", "-b:a", "96k"),
+    ("-map", "1:a", "-c:a", "aac_at", "-b:a", "96k"),
     ("-c:v", "h264_videotoolbox", "-b:v", "6M"),
     ("-pix_fmt", "yuv420p", "-tag:v", "avc1"),
     ("-movflags", "+faststart"),

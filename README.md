@@ -44,9 +44,14 @@ copies of Python, Qt, OpenCV, ffmpeg and libusb.
    `xattr -d com.apple.quarantine "/Applications/Tower Borescope.app"`.
 4. Plug in the borescope. The window shows the live view at 1280 x 720.
 
-Recording with a microphone asks for microphone access on first use. Optional additions:
-[Ollama](https://ollama.com) with `ollama pull qwen3-vl:4b-instruct` for local AI inspection,
-and OBS for the virtual camera output. `docs/user_guide.md` describes every feature.
+Recording with a microphone asks for microphone access on first use. An optional addition is
+[Ollama](https://ollama.com) with `ollama pull qwen3-vl:4b-instruct` for local AI inspection.
+`docs/user_guide.md` describes every feature.
+
+The downloadable application does not include the virtual camera output. It relies on
+pyvirtualcam, which is licensed under GPL-2.0 only and cannot be distributed in one program
+with OpenCV's Apache-2.0 license, so the View tab shows the virtual camera button disabled.
+Running from source (below) provides it; it also needs OBS with its virtual camera.
 
 ## Running from source
 
@@ -60,15 +65,24 @@ uv run tower-borescope
 ```
 
 `scripts/setup.sh` installs libusb, ffmpeg and uv through Homebrew, creates the environment
-and writes `.env` with the library locations. `uv run tower-borescope grab frame.jpg`,
-`stack still.png` and `record clip.mp4 --duration 30` capture without opening a window.
+with the `virtual-camera` extra (pyvirtualcam) and writes `.env` with the library locations.
+A plain `uv sync` removes the extra again; `uv sync --extra virtual-camera` keeps the
+virtual camera. `uv run tower-borescope grab frame.jpg`, `stack still.png` and
+`record clip.mp4 --duration 30` capture without opening a window.
 
 ## Building the application
 
-`scripts/build_app.sh` builds `Tower Borescope.app` for the architecture of the machine,
-signs it, checks that it renders a window, writes the disk image into `dist/` and installs the
-application into `~/Applications`. The GitHub release workflow runs the same script on Apple
-silicon and Intel runners; pushing a tag such as `v0.1.0` publishes both disk images.
+`scripts/build_app.sh` builds `Tower Borescope.app` for the architecture of the machine. It
+compiles libusb and an LGPL ffmpeg from pinned, checksum-verified release sources into
+`build/`; the ffmpeg build contains only the devices, formats, codecs, filters and protocols
+the application uses and links only macOS system libraries. PyInstaller then packs the
+application, unused Qt modules and Python packages are left out, and the license texts of
+every bundled component are collected into `Contents/Resources/licenses`. The script signs
+the bundle, checks that it renders a window, writes the disk image with `LICENSE` and
+`THIRD_PARTY_NOTICES.md` next to the application into `dist/` and installs the application
+into `~/Applications`. The GitHub release workflow runs the same script on Apple silicon and
+Intel runners; pushing a tag such as `v0.1.0` publishes both disk images together with the
+ffmpeg and libusb source tarballs the build compiled.
 
 ## Standards
 
@@ -79,5 +93,7 @@ audit tool, and CI runs it on every push.
 
 ## License
 
-MIT License; see `LICENSE`. The bundled components and their licenses are listed in
-`THIRD_PARTY_NOTICES.md`.
+MIT License; see `LICENSE`. `THIRD_PARTY_NOTICES.md` lists the bundled components, their
+licenses and where the corresponding source of each LGPL component is available. The
+application carries the license texts in `Tower Borescope.app/Contents/Resources/licenses`,
+and the disk image carries `LICENSE` and `THIRD_PARTY_NOTICES.md`.

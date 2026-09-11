@@ -12,24 +12,33 @@ dependencies = [
     "pyside6==6.11.2",
     "python-dotenv>=1.0.1",
     "pyusb==1.3.1",
-    "pyvirtualcam==0.15.0",
     "qrcode==8.2",
+]
+
+[project.optional-dependencies]
+# OBS virtual camera output. pyvirtualcam is GPL-2.0, so the downloadable application
+# leaves it out; a source checkout installs it with `uv sync --extra virtual-camera`.
+virtual-camera = [
+    "pyvirtualcam==0.15.0",
 ]
 
 [project.scripts]
 tower-borescope = "tower_borescope.cli:main"
 
 [dependency-groups]
+# imageio-ffmpeg gives CI runners a static ffmpeg for the recording tests; it is not
+# distributed with the application.
 dev = [
+    "imageio-ffmpeg==0.6.0",
     "mutmut>=3.0",
     "mypy>=1.13",
     "pytest>=8.3",
     "radon>=6.0",
     "ruff>=0.8",
 ]
-# Application bundle: PyInstaller and the wheel that carries a static ffmpeg build.
+# Application bundle: PyInstaller. scripts/build_app.sh builds ffmpeg and libusb from
+# their release sources.
 build = [
-    "imageio-ffmpeg==0.6.0",
     "pyinstaller==6.22.2",
 ]
 
