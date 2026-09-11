@@ -5,6 +5,7 @@ sidebar."""
 from __future__ import annotations
 
 import time
+import urllib.error
 import urllib.request
 
 import pytest
@@ -22,7 +23,8 @@ JPEG_MAGIC = b"\xff\xd8"
 
 
 def local_url(win, path=""):
-    return f"http://127.0.0.1:{win.pipeline.remote.port}/{path}"
+    remote = win.pipeline.remote
+    return f"http://127.0.0.1:{remote.port}/{path}?key={remote.access_key}"
 
 
 def read_stream(url):
@@ -41,9 +43,13 @@ def test_phone_monitor_serves_the_page_and_the_stream(window):
 
 def test_phone_monitor_shows_a_qr_code_and_stops(window):
     window.share.toggle_remote()
-    assert window.pipeline.remote is not None
+    remote = window.pipeline.remote
+    assert remote is not None
     assert window.share.qr is not None and window.share.qr.isVisible()
-    assert window.share.group.remote_label.text().startswith("On: http://")
+    label = window.share.group.remote_label.text()
+    assert label.startswith("On: http://")
+    assert label.endswith(f"/?key={remote.access_key}")
+    assert window.share.qr.url.endswith(f"/?key={remote.access_key}")
     window.share.toggle_remote()
     assert window.pipeline.remote is None and window.share.qr is None
     assert window.share.group.remote_label.text() == "Off"
@@ -57,6 +63,21 @@ def test_phone_snapshot_button_saves_a_snapshot(window):
     assert wait_until(lambda: any(pictures.glob("scope_*[0-9].png")))
     window.share.stop_remote()
     assert not window.share.group.remote_btn.isChecked()
+
+
+def test_phone_monitor_refuses_requests_without_the_key(qapp, window):
+    presses = []
+    window.share._requests["snapshot"] = lambda: presses.append(1)
+    window.share.toggle_remote()
+    bare = f"http://127.0.0.1:{window.pipeline.remote.port}/snapshot"
+    request = urllib.request.Request(bare, method="POST")
+    with pytest.raises(urllib.error.HTTPError) as refused:
+        urllib.request.urlopen(request, timeout=3)
+    assert refused.value.code == 403
+    refused.value.close()
+    qapp.processEvents()
+    assert presses == []
+    window.share.stop_remote()
 
 
 def test_phone_record_button_requests_a_toggle(qapp, window):

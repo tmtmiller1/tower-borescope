@@ -18,10 +18,9 @@ CODE_ORIGIN: Final = 30.0
 CODE_SIZE: Final = 300.0
 QUIET_ZONE: Final = 8.0
 CELL_OVERLAP: Final = 0.5
-URL_TOP: Final = 345.0
-URL_HEIGHT: Final = 30.0
-URL_FONT_SIZE: Final = 14
-HINT_RECT: Final = (20.0, 380.0, 320.0, 50.0)
+URL_RECT: Final = (20.0, 336.0, 320.0, 44.0)
+URL_FONT_SIZE: Final = 12
+HINT_RECT: Final = (20.0, 384.0, 320.0, 50.0)
 HINT_FONT_SIZE: Final = 11
 HINT: Final = (
     "Scan with the phone's camera, or type the address in a browser on the same Wi-Fi."
@@ -68,18 +67,14 @@ class QrDialog(QDialog):
                     )
 
     def _paint_text(self, painter: QPainter) -> None:
-        """Draw the address and the scanning hint below the code."""
+        """Draw the address, wrapped over two lines, and the scanning hint below it."""
         family = self.font().family()
+        flags = Qt.AlignmentFlag.AlignCenter | Qt.TextFlag.TextWordWrap
         painter.setPen(QColor(TEXT))
         painter.setFont(QFont(family, URL_FONT_SIZE, QFont.Weight.DemiBold))
-        painter.drawText(
-            QRectF(0.0, URL_TOP, float(WIDTH), URL_HEIGHT),
-            Qt.AlignmentFlag.AlignCenter,
-            self.url,
-        )
+        painter.drawText(QRectF(*URL_RECT), int(flags.value), self.url)
         painter.setPen(QColor(MUTED_TEXT))
         painter.setFont(QFont(family, HINT_FONT_SIZE))
-        flags = Qt.AlignmentFlag.AlignCenter | Qt.TextFlag.TextWordWrap
         painter.drawText(QRectF(*HINT_RECT), int(flags.value), HINT)
 
     def _paint_event(self, _event: QPaintEvent) -> None:

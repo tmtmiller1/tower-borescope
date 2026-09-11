@@ -3,13 +3,22 @@
 from __future__ import annotations
 
 import pytest
-from PySide6.QtGui import QColor
+from PySide6.QtCore import QRectF, Qt
+from PySide6.QtGui import QColor, QFont, QFontMetricsF
 
-from tower_borescope.app.dialogs.qr_dialog import HEIGHT, WIDTH, QrDialog
+from tower_borescope.app.dialogs.qr_dialog import (
+    HEIGHT,
+    HINT_RECT,
+    URL_FONT_SIZE,
+    URL_RECT,
+    WIDTH,
+    QrDialog,
+)
 from tower_borescope.app.style import BACKGROUND
 from tower_borescope.remote.qr import qr_matrix
 
-ADDRESS = "http://192.168.1.20:8765/"
+ADDRESS = "http://192.168.1.20:8765/?key=Q2x8mVn4Rt7Kp1Ws9Yb3Hd6J"
+LONGEST_ADDRESS = "http://192.168.100.200:65535/?key=Q2x8mVn4Rt7Kp1Ws9Yb3Hd6J"
 
 
 @pytest.fixture
@@ -29,6 +38,16 @@ def test_dialog_holds_the_matrix_at_a_fixed_size(qapp):
     assert dialog.matrix == qr_matrix(ADDRESS)
     assert (dialog.width(), dialog.height()) == (WIDTH, HEIGHT)
     assert QrDialog.paintEvent is QrDialog._paint_event
+
+
+def test_keyed_address_wraps_inside_its_area(qapp):
+    dialog = QrDialog(LONGEST_ADDRESS)
+    font = QFont(dialog.font().family(), URL_FONT_SIZE, QFont.Weight.DemiBold)
+    flags = Qt.AlignmentFlag.AlignCenter | Qt.TextFlag.TextWordWrap
+    area = QRectF(*URL_RECT)
+    bounds = QFontMetricsF(font).boundingRect(area, int(flags.value), dialog.url)
+    assert area.contains(bounds)
+    assert area.bottom() <= HINT_RECT[1] <= HEIGHT - HINT_RECT[3]
 
 
 def test_paint_draws_background_and_quiet_zone(painted):

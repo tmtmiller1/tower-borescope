@@ -24,7 +24,7 @@ Pytest suite for tower_borescope, using synthetic media and test doubles instead
 - `test_ai_settings.py`: AI configuration defaults, environment values and settings round trip.
 - `test_app_dialogs_ai_settings.py`: AI settings dialog sections, saving and key storage through a substituted Keychain.
 - `test_app_dialogs_gallery.py`: capture gallery listing, sidecar details, deletion, placeholder thumbnails and video thumbnails read by ffmpeg from a processed MP4 and a raw MOV recorded at run time.
-- `test_app_dialogs_qr_dialog.py`: phone monitor QR code dialog painting.
+- `test_app_dialogs_qr_dialog.py`: phone monitor QR code dialog painting and wrapping of the keyed address.
 - `test_app_frame_info.py`: processed frame and meter record.
 - `test_app_icon.py`: drawn application icon size, transparency and repeatability.
 - `test_app_main.py`: application start-up and the test capture option.
@@ -56,7 +56,7 @@ Pytest suite for tower_borescope, using synthetic media and test doubles instead
 - `test_app_window_main_window.py`: streaming, panels, filters, captures, resolution switching, geometry and shortcuts.
 - `test_app_window_measure_controller.py`: measurement tools, units, calibration and AI scale estimates.
 - `test_app_window_menus.py`: menu structure, actions and shortcuts.
-- `test_app_window_share_controller.py`: phone monitor and virtual camera controls, including the disabled virtual camera when pyvirtualcam is missing.
+- `test_app_window_share_controller.py`: phone monitor and virtual camera controls, including the access key in the shown address, refusal of requests without it and the disabled virtual camera when pyvirtualcam is missing.
 - `test_capture_ffmpeg.py`: ffmpeg discovery, microphone device parsing and the first-frame reader's command line, raw BGR decoding, short reads, timeouts and missing ffmpeg.
 - `test_capture_recorder.py`: MP4 and raw MOV recording, frame padding and the audio command line.
 - `test_capture_storage.py`: capture file naming, sidecars and capture listing.
@@ -86,6 +86,6 @@ Pytest suite for tower_borescope, using synthetic media and test doubles instead
 - `test_measure_shapes.py`: distance, angle and area measurements, annotations and overlay snapshots.
 - `test_measure_units.py`: length and area formatting in every unit.
 - `test_mutation_score.py`: mutation outcome counting, per-area grouping, floors, the gate and baseline updates.
-- `test_remote_page.py`: phone monitor page content.
-- `test_remote_qr.py`: QR code matrix generation.
-- `test_remote_server.py`: phone monitor server endpoints, streaming, callbacks and shutdown.
+- `test_remote_page.py`: phone monitor page content, which holds no access key.
+- `test_remote_qr.py`: QR code matrix generation and the code size of a keyed address.
+- `test_remote_server.py`: phone monitor access key (403 on every route without it or with a wrong one, the query key, the page cookie, a new key on each start, no log output), server endpoints, streaming, callbacks and shutdown.

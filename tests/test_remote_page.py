@@ -19,6 +19,12 @@ def test_page_uses_every_endpoint():
     assert "j.recording" in PAGE_HTML
 
 
+def test_page_leaves_the_access_key_to_the_cookie():
+    assert "key=" not in PAGE_HTML
+    assert "document.cookie" not in PAGE_HTML
+    assert "http://" not in PAGE_HTML
+
+
 def test_page_text_is_plain():
     assert EM_DASH not in PAGE_HTML
     assert EN_DASH not in PAGE_HTML

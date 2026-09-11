@@ -1,8 +1,9 @@
 """Phone monitor: the live view served on the local network as an MJPEG stream.
 
 The pipeline calls :meth:`RemoteServer.publish` with each processed frame. A browser on
-the same network opens ``http://<address>:<port>/`` and sees the picture with snapshot
-and record buttons.
+the same network opens ``http://<address>:<port>/?key=<key>`` and sees the picture with
+snapshot and record buttons. Every route answers 403 unless the request carries the
+access key of the current server start, in the query or in the cookie the page sets.
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ from typing import Any, cast
 
 from tower_borescope.image_types import BgrImage
 from tower_borescope.jpeg import encode_jpeg
+from tower_borescope.remote import access
 from tower_borescope.remote.page import PAGE_HTML
 
 DEFAULT_PORT = 8765
@@ -37,6 +39,14 @@ ROUTE_PROBE_ADDRESS = "192.168.255.255"
 LINK_LOCAL_PREFIX = "169.254"
 INTERFACES = ("en0", "en1", "en2", "en3")
 BOUNDARY = "frame"
+PAGE_PATH = "/"
+STREAM_PATH = "/stream"
+FRAME_PATH = "/frame.jpg"
+SNAPSHOT_PATH = "/snapshot"
+RECORD_PATH = "/record"
+PLAIN_TEXT = "text/plain"
+FORBIDDEN_BODY = b"forbidden"
+NOT_FOUND_BODY = b"not found"
 
 
 def _interface_address(interface: str) -> str | None:
@@ -138,62 +148,105 @@ class _Routes:
     hub: _FrameHub
     on_snapshot: Callable[[], object]
     on_record: Callable[[], bool]
+    key: str
 
 
 class _RemoteHttpServer(ThreadingHTTPServer):
-    """Threaded HTTP server carrying the routes for its handlers."""
+    """Threaded HTTP server carrying the routes and the access cookie name."""
 
     daemon_threads = True
 
     def __init__(self, address: tuple[str, int], routes: _Routes) -> None:
         super().__init__(address, _RemoteHandler)
         self.routes = routes
+        self.cookie_name = access.cookie_name(self.server_port)
 
 
 class _RemoteHandler(BaseHTTPRequestHandler):
-    """Serves the page, the MJPEG stream, single frames and the button actions."""
+    """Serves the page, MJPEG stream, frames and buttons to requests with the key."""
 
     protocol_version = "HTTP/1.1"
 
+    def _http_server(self) -> _RemoteHttpServer:
+        """Server that accepted this request."""
+        return cast(_RemoteHttpServer, self.server)
+
     def _routes(self) -> _Routes:
         """Routes of the server that accepted this request."""
-        return cast(_RemoteHttpServer, self.server).routes
+        return self._http_server().routes
 
     def _log_message(self, format: str, *args: Any) -> None:
-        """Discard access log lines."""
+        """Discard access log lines, which would otherwise record the key query."""
+
+    def _authorized_path(self) -> str | None:
+        """Request path when the ``key`` query or the access cookie holds the key.
+
+        Returns None after answering 403, so the request reaches no route.
+        """
+        target = access.parse_target(self.path)
+        key = self._routes().key
+        cookies = "; ".join(self.headers.get_all("Cookie") or [])
+        cookie = access.cookie_key(cookies, self._http_server().cookie_name)
+        if access.key_matches(target.key, key) or access.key_matches(cookie, key):
+            return target.path
+        self._send(HTTPStatus.FORBIDDEN, PLAIN_TEXT, FORBIDDEN_BODY)
+        return None
 
     def _handle_get(self) -> None:
-        """Serve ``/stream``, ``/frame.jpg`` or the page."""
-        if self.path.startswith("/stream"):
+        """Serve the page, ``/stream`` or ``/frame.jpg`` to a request with the key."""
+        path = self._authorized_path()
+        if path is None:
+            return
+        if path == PAGE_PATH:
+            self._send_page()
+        elif path == STREAM_PATH:
             self._stream()
-        elif self.path.startswith("/frame.jpg"):
+        elif path == FRAME_PATH:
             self._send(HTTPStatus.OK, "image/jpeg", self._routes().hub.latest or b"")
         else:
-            self._send(HTTPStatus.OK, "text/html; charset=utf-8", PAGE_HTML.encode())
+            self._send(HTTPStatus.NOT_FOUND, PLAIN_TEXT, NOT_FOUND_BODY)
 
     def _handle_post(self) -> None:
-        """Run the snapshot or record callback."""
+        """Run the snapshot or record callback for a request with the key."""
+        path = self._authorized_path()
+        if path is None:
+            return
         routes = self._routes()
-        if self.path.startswith("/snapshot"):
+        if path == SNAPSHOT_PATH:
             routes.on_snapshot()
             self._send_json({"ok": True})
-        elif self.path.startswith("/record"):
+        elif path == RECORD_PATH:
             self._send_json({"recording": bool(routes.on_record())})
         else:
-            self._send(HTTPStatus.NOT_FOUND, "text/plain", b"not found")
+            self._send(HTTPStatus.NOT_FOUND, PLAIN_TEXT, NOT_FOUND_BODY)
 
     do_GET = _handle_get
     do_POST = _handle_post
     log_message = _log_message
 
-    def _send(self, status: HTTPStatus, content_type: str, body: bytes) -> None:
-        """Send a complete uncached response."""
+    def _send(
+        self,
+        status: HTTPStatus,
+        content_type: str,
+        body: bytes,
+        cookie: str | None = None,
+    ) -> None:
+        """Send a complete uncached response, setting ``cookie`` when given."""
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        self.send_header("Referrer-Policy", "no-referrer")
+        if cookie is not None:
+            self.send_header("Set-Cookie", cookie)
         self.end_headers()
         self.wfile.write(body)
+
+    def _send_page(self) -> None:
+        """Send the page and store the access key in a cookie for its own requests."""
+        server = self._http_server()
+        cookie = access.set_cookie_value(server.cookie_name, server.routes.key)
+        self._send(HTTPStatus.OK, "text/html; charset=utf-8", PAGE_HTML.encode(), cookie)
 
     def _send_json(self, payload: dict[str, bool]) -> None:
         """Send a JSON object."""
@@ -246,6 +299,9 @@ def _bind(routes: _Routes, first_port: int, attempts: int) -> _RemoteHttpServer:
 class RemoteServer:
     """HTTP server streaming processed frames to browsers on the local network.
 
+    Each start creates a new access key, held only in memory, that every request must
+    carry; :attr:`url` includes it.
+
     Attributes:
         on_snapshot: Called when a viewer presses Snapshot.
         on_record: Called when a viewer presses Record; returns True while recording.
@@ -271,6 +327,7 @@ class RemoteServer:
         self.port = DEFAULT_PORT if port is None else port
         self._attempts = PORT_ATTEMPTS if port is None else 1
         self._hub = _FrameHub()
+        self._key: str | None = None
         self._server: _RemoteHttpServer | None = None
         self._thread: threading.Thread | None = None
 
@@ -280,12 +337,18 @@ class RemoteServer:
         return self._hub.viewers
 
     @property
+    def access_key(self) -> str | None:
+        """Access key requests must carry while serving; None when stopped."""
+        return self._key
+
+    @property
     def url(self) -> str:
-        """Address a phone on the local network opens."""
-        return f"http://{lan_ip()}:{self.port}/"
+        """Address a phone opens, with the access key query while the server runs."""
+        base = f"http://{lan_ip()}:{self.port}/"
+        return base if self._key is None else access.keyed_url(base, self._key)
 
     def start(self) -> None:
-        """Bind the port and serve requests on a background thread.
+        """Create a new access key, bind the port and serve on a background thread.
 
         Raises:
             OSError: When no port in the allowed range is free.
@@ -293,9 +356,11 @@ class RemoteServer:
         if self._server is not None:
             return
         self._hub = _FrameHub()
-        routes = _Routes(self._hub, self.on_snapshot, self.on_record)
+        key = access.new_key()
+        routes = _Routes(self._hub, self.on_snapshot, self.on_record, key)
         server = _bind(routes, self.port, self._attempts)
         self._server = server
+        self._key = key
         self.port = int(server.socket.getsockname()[1])
         self._thread = threading.Thread(
             target=server.serve_forever, name="remote-server", daemon=True
@@ -323,6 +388,7 @@ class RemoteServer:
         if server is None:
             return
         self._server = None
+        self._key = None
         self._hub.close()
         server.shutdown()
         server.server_close()

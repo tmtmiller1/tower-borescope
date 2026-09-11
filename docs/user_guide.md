@@ -73,6 +73,12 @@ Rotation, mirroring, grid and zoom; the phone monitor, which serves the live vie
 and record buttons to any browser on the same network through a QR code; and the virtual camera,
 which requires OBS.
 
+The QR code and the phone monitor address on the View tab carry a private access key.
+Each start of the phone monitor creates a new key, so an address from an earlier session stops
+working. Others on the same network who find the port cannot open the page or the stream, or
+take snapshots and recordings, without the key. The key is not saved anywhere, and anyone who
+sees the QR code or the address can use it until the phone monitor stops.
+
 The downloadable application does not include the virtual camera: its button is disabled and
 a note below it names the reason. Running from source with `uv sync --extra virtual-camera`
 installs pyvirtualcam and enables the button.

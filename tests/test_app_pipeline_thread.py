@@ -134,7 +134,7 @@ def test_remote_publishing_reaches_a_running_server(start):
     try:
         harness.pipeline.set_remote(server)
         assert harness.pipeline.remote is server
-        url = f"http://127.0.0.1:{server.port}/stream"
+        url = f"http://127.0.0.1:{server.port}/stream?key={server.access_key}"
         with urllib.request.urlopen(url, timeout=10) as stream:
             head = stream.read(4000)
         assert b"image/jpeg" in head and b"\xff\xd8" in head

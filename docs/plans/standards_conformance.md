@@ -137,8 +137,9 @@ Names in this section are the contract between modules. Private helpers are free
 
 | Module | Public interface |
 |---|---|
+| `remote.access` | `RequestTarget`, `new_key()`, `keyed_url(base, key)`, `parse_target(target)`, `cookie_name(port)`, `cookie_key(header, name)`, `set_cookie_value(name, key)`, `key_matches(candidate, key)` |
 | `remote.page` | `PAGE_HTML` |
-| `remote.server` | `lan_ip()`, `RemoteServer(on_snapshot, on_record, port=None)`: `start()`, `stop()`, `publish(image)`, `url`, `port`, `viewers` |
+| `remote.server` | `lan_ip()`, `RemoteServer(on_snapshot, on_record, port=None)`: `start()`, `stop()`, `publish(image)`, `url`, `access_key`, `port`, `viewers` |
 | `remote.qr` | `qr_matrix(text) -> list[list[bool]]` |
 
 ### `ai`
