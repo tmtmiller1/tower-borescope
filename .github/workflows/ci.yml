@@ -45,5 +45,8 @@ jobs:
           findings="$(uv run radon cc src tests -n C -s)"
           if [ -n "$findings" ]; then echo "$findings"; exit 1; fi
 
+      - name: Limits
+        run: uv run python scripts/check_limits.py
+
       - name: Tests
         run: uv run pytest

@@ -10,7 +10,7 @@ tooling enforces are restated here so the repository stays self-contained.
   `remote`, `ai` and `app`; shared modules `config`, `errors`, `image_types`, `jpeg` and `cli`.
 - `tests/`: pytest suite. `conftest.py` sandboxes every data location; `synthetic.py` generates
   frames and USB packets; `fakes.py` holds the camera reader and AI backend doubles.
-- `scripts/`: environment setup and application bundle build.
+- `scripts/`: environment setup, application bundle build and the limits checker.
 - `docs/`: protocol reference, user guide and plans.
 
 ## Commands
@@ -21,12 +21,15 @@ uv run ruff check src tests
 uv run ruff format src tests
 uv run mypy
 uv run radon cc src tests -n C -s
+uv run python scripts/check_limits.py
 uv run pytest
 uv run pytest --camera
 uv run pytest --camera --live-ai
 scripts/build_app.sh
 ```
 
+`scripts/check_limits.py` measures the size and complexity limits in the table below and
+exits 1 on any finding; CI runs it after radon.
 `--camera` tests need the borescope attached and no running Tower Borescope process.
 `--live-ai` tests need a local Ollama server with a vision model. `scripts/build_app.sh` needs
 the `build` dependency group (`uv sync --all-groups`) and produces the signed bundle and the

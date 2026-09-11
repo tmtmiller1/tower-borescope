@@ -63,8 +63,10 @@ dashes and emoji.
 
 ```
 uv run ruff check src tests scripts
+uv run ruff format --check src tests scripts
 uv run mypy
-uv run radon cc src -n C -s
+uv run radon cc src tests -n C -s
+uv run python scripts/check_limits.py
 uv run pytest
 uv run pytest --camera
 uv run pytest --camera --live-ai
@@ -72,7 +74,9 @@ uv run pytest --camera --live-ai
 
 The `obs_quality` audit from `tower-agent` runs against this repository with scan roots
 `src/tower_borescope`, `tests`, `scripts` and `docs`. The port is complete when that audit
-reports zero ERROR findings and zero WARN findings.
+reports zero ERROR findings and zero WARN findings. `scripts/check_limits.py` repeats the size
+and complexity rules of that audit inside the repository, so CI on GitHub enforces them
+without access to `tower-agent`.
 
 ## Package layout and public interfaces
 

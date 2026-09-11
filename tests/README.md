@@ -60,6 +60,7 @@ Pytest suite for tower_borescope, using synthetic media and test doubles instead
 - `test_capture_ffmpeg.py`: ffmpeg discovery and microphone device parsing.
 - `test_capture_recorder.py`: MP4 and raw MOV recording, frame padding and the audio command line.
 - `test_capture_storage.py`: capture file naming, sidecars and capture listing.
+- `test_check_limits.py`: every rule of `scripts/check_limits.py` on small sources, the exit statuses and report format, and a clean run over the repository.
 - `test_cli.py`: command line parsing, error handling and the opt-in camera captures.
 - `test_config.py`: environment values, data paths and the settings store.
 - `test_device_camera.py`: camera open, retry, mode probe, frame reads and hardware checks.

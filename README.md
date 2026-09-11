@@ -74,6 +74,8 @@ silicon and Intel runners; pushing a tag such as `v0.1.0` publishes both disk im
 
 The code follows the Tower coding standards. `AGENTS.md` restates the enforced limits and the
 verification commands; `docs/plans/standards_conformance.md` records the module contract.
+`scripts/check_limits.py` verifies the size and complexity limits without the private Tower
+audit tool, and CI runs it on every push.
 
 ## License
 

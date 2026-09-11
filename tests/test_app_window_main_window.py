@@ -147,17 +147,19 @@ def test_burst_and_stacked_still(window):
     assert stack_btn.isEnabled()
 
 
-def video_seconds(path):
+def video_frames(path):
     capture = cv2.VideoCapture(str(path))
     frames = capture.get(cv2.CAP_PROP_FRAME_COUNT)
-    fps = capture.get(cv2.CAP_PROP_FPS)
     capture.release()
-    return frames / fps if fps else 0.0
+    return int(frames)
 
 
 @needs_ffmpeg
 def test_recording_includes_the_preroll(window):
+    frames = []
+    window.pipeline.frame_ready.connect(frames.append)
     pause(3.0)
+    before_press = len(frames)
     window.capture.panel.preroll_check.setChecked(True)
     window.capture.toggle_recording()
     assert wait_until(lambda: window.pipeline.recording)
@@ -166,10 +168,16 @@ def test_recording_includes_the_preroll(window):
     assert wait_until(lambda: record.text() == "Stop Recording")
     pause(2.0)
     window.capture.toggle_recording()
+    pressed = len(frames) - before_press
+    window.pipeline.frame_ready.disconnect(frames.append)
     movies = data_paths().movies
     assert wait_until(lambda: any(movies.glob("scope_*.json")), 20.0)
     video = next(movies.glob("scope_*.mp4"))
-    assert video_seconds(video) >= 4.0
+    # The pre-roll adds the frames seen before the press. Frame counts depend on the
+    # machine's speed (a slow runner processes fewer of the paced fake frames), so the
+    # check compares counts from the same run instead of assuming real-time rates.
+    assert before_press >= 10 and pressed >= 10
+    assert video_frames(video) >= pressed + before_press // 2
     # The sidecar lands before the queued recording_changed signal reaches the window.
     record_btn = window.capture.panel.record_btn
     assert wait_until(lambda: record_btn.text() == "Record")
@@ -224,12 +232,19 @@ def test_gallery_lists_captures_and_reloads(window):
 def test_geometry_is_saved_and_restored(qapp, qt_sandbox):
     first = make_window(qt_sandbox)
     first.show()
-    first.resize(1000, 700)
+    # Restoring clamps a window to its screen, and the offscreen platform used in CI has
+    # an 800 x 600 screen, so the requested size stays inside the available area.
+    area = first.screen().availableGeometry()
+    target = (min(1000, area.width() - 100), min(650, area.height() - 100))
+    first.resize(*target)
     qapp.processEvents()
+    saved = (first.width(), first.height())
     first.close()
     second = make_window(qt_sandbox)
-    assert (second.width(), second.height()) == (1000, 700)
-    second.close()
+    try:
+        assert (second.width(), second.height()) == saved
+    finally:
+        second.close()
 
 
 def test_escape_cancels_the_tool_then_returns_to_live(window):
