@@ -20,6 +20,7 @@ from tower_borescope.app.pipeline.state import PipelineState
 from tower_borescope.app.pipeline.thread import Pipeline
 from tower_borescope.capture import recorder as recorder_module
 from tower_borescope.capture.recorder import INSTALL_HINT
+from tower_borescope.device.constants import FPS
 from tower_borescope.jpeg import decode_bgr
 
 EVENT_NAMES = (
@@ -154,20 +155,29 @@ def test_stop_request_without_recording_is_harmless(tmp_path):
 def test_pipeline_preroll_makes_the_clip_longer_than_the_press(qapp):
     pipeline = Pipeline({"mode": "240p"}, FakeReader)
     captured = []
+    frames = []
     pipeline.captured.connect(lambda kind, path: captured.append((kind, path)))
+    pipeline.frame_ready.connect(frames.append)
     pipeline.start()
     try:
         _spin(3.0)
+        before_press = len(frames)
         pipeline.set_recording(True)
         assert _wait_until(lambda: pipeline.recording)
-        pressed = time.monotonic()
+        started = len(frames)
         _spin(2.0)
         pipeline.set_recording(False)
-        pressed = time.monotonic() - pressed
+        pressed = len(frames) - started
         assert _wait_until(lambda: any(kind == "video" for kind, _ in captured))
     finally:
         pipeline.stop()
         pipeline.wait(15000)
     video = next(path for kind, path in captured if kind == "video")
-    duration = float(_probe(video, "format=duration"))
-    assert duration >= pressed + 2.0, (duration, pressed)
+    clip_frames = float(_probe(video, "format=duration")) * FPS
+    # Counts come from the same run, so a slow machine lowers both sides alike.
+    assert before_press >= 10 and pressed >= 10, (before_press, pressed)
+    assert clip_frames >= pressed + before_press // 2, (
+        clip_frames,
+        pressed,
+        before_press,
+    )

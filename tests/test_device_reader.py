@@ -236,6 +236,7 @@ def test_spawned_reader_reports_status_without_a_camera_and_stops():
     assert not reader._process.is_alive()
 
 
+@pytest.mark.timing
 @pytest.mark.camera
 def test_hardware_reader_delivers_steady_frames(borescope_available):
     reader = Reader("720p")

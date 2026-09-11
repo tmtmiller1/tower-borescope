@@ -34,6 +34,8 @@ exits 1 on any finding; CI runs it after radon.
 `--live-ai` tests need a local Ollama server with a vision model. `scripts/build_app.sh` needs
 the `build` dependency group (`uv sync --all-groups`) and produces the signed bundle and the
 disk image in `dist/`; `.github/workflows/release.yml` runs it for both architectures.
+Tests marked `timing` assert real-time frame rates. CI and mutation runs leave them out,
+so `uv run pytest -m timing` runs them on a development machine.
 
 ## Enforced limits
 

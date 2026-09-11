@@ -246,8 +246,16 @@ class AiSettingsDialog(QDialog):
         """Name of the backend currently chosen."""
         return str(self.backend_combo.currentData())
 
-    def _switch(self) -> None:
-        """Show only the section of the chosen backend."""
+    def _switch(self, _index: int = -1) -> None:
+        """Show only the section of the chosen backend.
+
+        The slot takes the index that ``currentIndexChanged`` sends. Qt passes a slot
+        only as many arguments as its signature accepts, and a wrapped slot, such as
+        the trampolines of a mutation-testing run, accepts all of them.
+
+        Args:
+            _index: Index from the combo box signal; the selection is read directly.
+        """
         chosen = self.selected_backend()
         for key, box in self.sections.items():
             box.setVisible(key == chosen)

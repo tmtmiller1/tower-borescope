@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import sys
 import time
 from collections.abc import Callable, Iterator
 from pathlib import Path
@@ -33,6 +34,7 @@ SANDBOX_VARIABLES = ("PICTURES_DIR", "MOVIES_DIR", "REPORTS_DIR")
 APP_EXECUTABLE_SUFFIX = "Tower Borescope.app/Contents/MacOS/Tower Borescope"
 WAIT_TIMEOUT = 8.0
 POLL_INTERVAL = 0.01
+MUTATION_TOOL_MODULE = "mutmut"
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -207,3 +209,21 @@ def borescope_available() -> None:
 
     if not device_present():
         pytest.fail("No supercamera found on USB")
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    """Keep OpenCV single-threaded when mutmut runs the suite.
+
+    mutmut runs pytest inside its own process, then forks one child per mutant without
+    starting a new interpreter. OpenCV on macOS spreads work over Grand Central
+    Dispatch, which does not survive ``fork``: a child that calls a parallel OpenCV
+    function crashes, and mutmut reports the mutant as a segfault instead of a result.
+    Ordinary test runs and the application keep OpenCV's threads.
+
+    Args:
+        config: The pytest configuration; unused.
+    """
+    if MUTATION_TOOL_MODULE in sys.modules:
+        import cv2
+
+        cv2.setNumThreads(1)

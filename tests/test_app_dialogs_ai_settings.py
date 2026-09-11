@@ -94,6 +94,9 @@ def test_switching_backend_shows_one_section(dialog):
     assert not dialog.sections["anthropic"].isHidden()
     dialog.backend_combo.setCurrentIndex(1)
     assert not dialog.sections["anythingllm"].isHidden()
+    # The slot takes the index currentIndexChanged sends, so wrapped slots still work.
+    dialog._switch(1)
+    assert not dialog.sections["anythingllm"].isHidden()
 
 
 def test_current_config_reads_the_fields(dialog):

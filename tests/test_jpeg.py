@@ -30,5 +30,21 @@ def test_jpeg_size_stops_at_scan_data_without_frame_header():
     assert jpeg_size(data) is None
 
 
+SOI = b"\xff\xd8"
+# SOF0 marker, segment length 17, 8-bit samples, height 240, width 320.
+FRAME_HEADER = b"\xff\xc0\x00\x11\x08\x00\xf0\x01\x40"
+
+
+def test_jpeg_size_reads_a_frame_header_ending_at_the_last_byte():
+    assert jpeg_size(SOI + FRAME_HEADER) == (320, 240)
+    assert jpeg_size(SOI + FRAME_HEADER[:-1]) is None
+
+
+def test_jpeg_size_skips_a_segment_longer_than_255_bytes():
+    # A comment segment of 300 bytes puts a nonzero value in the high length byte.
+    comment = b"\xff\xfe" + (300).to_bytes(2, "big") + bytes(298)
+    assert jpeg_size(SOI + comment + FRAME_HEADER + bytes(8)) == (320, 240)
+
+
 def test_decode_of_non_jpeg_bytes_is_none():
     assert decode_bgr(b"not a jpeg at all") is None

@@ -143,6 +143,7 @@ def test_remote_publishing_reaches_a_running_server(start):
         server.stop()
 
 
+@pytest.mark.timing
 def test_every_filter_on_holds_the_frame_rate(start):
     settings = {"mode": "720p", "enhance": True, "awb": True, "stabilize": True}
     settings.update({"denoise": 0.6, "glare": 0.5, "view_mode": "Outline", "zebra": True})
@@ -200,6 +201,7 @@ def test_recording_stops_on_mode_change(start):
     assert harness.kinds("video")[0].endswith(".mp4")
 
 
+@pytest.mark.timing
 @pytest.mark.camera
 def test_real_reader_streams_720p_at_camera_rate(start, borescope_available):
     harness = start({"mode": "720p"}, Reader)

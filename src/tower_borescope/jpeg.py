@@ -28,7 +28,9 @@ def jpeg_size(data: bytes) -> tuple[int, int] | None:
         starts before any SOF0 segment or the header is truncated.
     """
     index = _FIRST_SEGMENT
-    while index + _SOF_HEADER_BYTES < len(data) and data[index] == _MARKER_PREFIX:
+    # A frame header occupies bytes index to index + 8, so it fits when it ends at the
+    # last byte of the data.
+    while index + _SOF_HEADER_BYTES <= len(data) and data[index] == _MARKER_PREFIX:
         marker = data[index + 1]
         length = (data[index + 2] << 8) | data[index + 3]
         if marker == _START_OF_FRAME:

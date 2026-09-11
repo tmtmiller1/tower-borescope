@@ -73,6 +73,7 @@ def test_panels_are_composed(window):
     assert isinstance(window.capture.feedback.recent, RecentPanel)
 
 
+@pytest.mark.timing
 def test_every_filter_keeps_the_frame_rate(window):
     image = window.image.panel
     image.enhance_check.setChecked(True)
