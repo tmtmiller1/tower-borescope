@@ -86,6 +86,7 @@ Pytest suite for tower_borescope, using synthetic media and test doubles instead
 - `test_measure_shapes.py`: distance, angle and area measurements, annotations and overlay snapshots.
 - `test_measure_units.py`: length and area formatting in every unit.
 - `test_mutation_score.py`: mutation outcome counting, per-area grouping, floors, the gate and baseline updates.
+- `test_remote_hub.py`: frame hub publishing rate, wake-ups for waiting streams and closing.
 - `test_remote_page.py`: phone monitor page content, which holds no access key.
 - `test_remote_qr.py`: QR code matrix generation and the code size of a keyed address.
-- `test_remote_server.py`: phone monitor access key (403 on every route without it or with a wrong one, the query key, the page cookie, a new key on each start, no log output), server endpoints, streaming, callbacks and shutdown.
+- `test_remote_server.py`: phone monitor access key (403 on every route without it or with a wrong one, the query key, the page cookie, a new key on each start, no log output), binding without a host name lookup, server endpoints, streaming, callbacks and shutdown.

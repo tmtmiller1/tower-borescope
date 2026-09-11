@@ -11,6 +11,7 @@ from __future__ import annotations
 import contextlib
 import json
 import socket
+import socketserver
 import subprocess
 import threading
 import time
@@ -23,14 +24,12 @@ from typing import Any, cast
 from tower_borescope.image_types import BgrImage
 from tower_borescope.jpeg import encode_jpeg
 from tower_borescope.remote import access
+from tower_borescope.remote.hub import FrameHub
 from tower_borescope.remote.page import PAGE_HTML
 
 DEFAULT_PORT = 8765
 PORT_ATTEMPTS = 10
-STREAM_FPS = 12
-IDLE_PUBLISH_SECONDS = 1.0
 JPEG_QUALITY = 72
-VIEWER_WAIT_SECONDS = 2.0
 STOP_JOIN_SECONDS = 5.0
 IPCONFIG_TIMEOUT_SECONDS = 2.0
 BIND_ADDRESS = "0.0.0.0"
@@ -97,55 +96,11 @@ def lan_ip() -> str:
     return _route_address()
 
 
-class _FrameHub:
-    """Latest encoded frame, shared by the publisher and the streaming handlers."""
-
-    def __init__(self) -> None:
-        self._condition = threading.Condition()
-        self.latest: bytes | None = None
-        self.latest_at = 0.0
-        self.viewers = 0
-        self.closed = False
-
-    def should_publish(self, now: float) -> bool:
-        """Rate limit: the stream rate with viewers, one frame a second without."""
-        elapsed = now - self.latest_at
-        if elapsed < 1.0 / STREAM_FPS:
-            return False
-        return self.viewers > 0 or elapsed >= IDLE_PUBLISH_SECONDS
-
-    def put(self, data: bytes, now: float) -> None:
-        """Store a frame and wake every waiting stream."""
-        with self._condition:
-            self.latest = data
-            self.latest_at = now
-            self._condition.notify_all()
-
-    def wait_newer(self, last: float) -> tuple[bytes | None, float]:
-        """Latest frame once one newer than ``last`` arrives or the wait times out."""
-        with self._condition:
-            self._condition.wait_for(
-                lambda: self.closed or self.latest_at > last, timeout=VIEWER_WAIT_SECONDS
-            )
-            return self.latest, self.latest_at
-
-    def add_viewers(self, delta: int) -> None:
-        """Adjust the open stream count."""
-        with self._condition:
-            self.viewers += delta
-
-    def close(self) -> None:
-        """End every stream loop."""
-        with self._condition:
-            self.closed = True
-            self._condition.notify_all()
-
-
 @dataclass(frozen=True, slots=True)
 class _Routes:
     """State and callbacks the request handler serves."""
 
-    hub: _FrameHub
+    hub: FrameHub
     on_snapshot: Callable[[], object]
     on_record: Callable[[], bool]
     key: str
@@ -160,6 +115,18 @@ class _RemoteHttpServer(ThreadingHTTPServer):
         super().__init__(address, _RemoteHandler)
         self.routes = routes
         self.cookie_name = access.cookie_name(self.server_port)
+
+    def server_bind(self) -> None:
+        """Bind the socket without the host name lookup ``HTTPServer`` performs.
+
+        ``HTTPServer.server_bind`` resolves the bound address with ``socket.getfqdn``
+        only to fill ``server_name``, and on macOS that reverse lookup can wait on
+        mDNS without end. The bound address serves as the name instead.
+        """
+        socketserver.TCPServer.server_bind(self)
+        host, port = self.socket.getsockname()[:2]
+        self.server_name = str(host)
+        self.server_port = int(port)
 
 
 class _RemoteHandler(BaseHTTPRequestHandler):
@@ -269,7 +236,7 @@ class _RemoteHandler(BaseHTTPRequestHandler):
         finally:
             hub.add_viewers(-1)
 
-    def _stream_frames(self, hub: _FrameHub) -> None:
+    def _stream_frames(self, hub: FrameHub) -> None:
         """Write each new frame, repeating the latest after a quiet interval."""
         last = 0.0
         while not hub.closed:
@@ -326,7 +293,7 @@ class RemoteServer:
         self.on_record = on_record
         self.port = DEFAULT_PORT if port is None else port
         self._attempts = PORT_ATTEMPTS if port is None else 1
-        self._hub = _FrameHub()
+        self._hub = FrameHub()
         self._key: str | None = None
         self._server: _RemoteHttpServer | None = None
         self._thread: threading.Thread | None = None
@@ -355,7 +322,7 @@ class RemoteServer:
         """
         if self._server is not None:
             return
-        self._hub = _FrameHub()
+        self._hub = FrameHub()
         key = access.new_key()
         routes = _Routes(self._hub, self.on_snapshot, self.on_record, key)
         server = _bind(routes, self.port, self._attempts)

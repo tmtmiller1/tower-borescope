@@ -19,6 +19,7 @@ Qt application named Tower Borescope.
 
 - `pyproject.toml`: package metadata, dependencies, and ruff, mypy, pytest and mutmut configuration.
 - `uv.lock`: resolved dependency versions used by `uv sync`.
+- `.python-version`: Python version uv uses for the environment, the tests and CI.
 - `.env.example`: template for machine-specific configuration: service endpoints, native tool paths and data locations.
 - `.gitignore`: ignored environment, build and personal files.
 - `AGENTS.md`: layout, commands and enforced limits for agentic tools.

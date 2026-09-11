@@ -379,3 +379,17 @@ def test_lan_ip_without_route_is_loopback(monkeypatch):
     monkeypatch.setattr(server.subprocess, "run", timed_out)
     monkeypatch.setattr(server.socket, "socket", Unrouted)
     assert lan_ip() == HOST
+
+
+def test_start_skips_the_host_name_lookup(callbacks, monkeypatch):
+    def refuse(*_args):
+        raise AssertionError("the server looked up a host name")
+
+    monkeypatch.setattr(socket, "getfqdn", refuse)
+    instance = RemoteServer(callbacks.snapshot, callbacks.record, port=0)
+    instance.start()
+    try:
+        response, _ = _request(instance.port, "GET", _keyed(instance, "/"))
+        assert response.status == 200
+    finally:
+        instance.stop()
