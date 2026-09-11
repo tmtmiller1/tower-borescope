@@ -33,10 +33,10 @@ jobs:
           - runner: macos-15-intel
             arch: x86_64
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6.8.0
         with:
           version: "latest"
 
@@ -51,7 +51,7 @@ jobs:
 
       - name: Restore the OpenCV build
         id: opencv-cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: build/${{ steps.opencv.outputs.key }}
           key: ${{ steps.opencv.outputs.key }}
@@ -62,7 +62,7 @@ jobs:
       - name: Save the OpenCV build
         # Saved as soon as it exists, so a failure in a later step keeps the compile.
         if: steps.opencv-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: build/${{ steps.opencv.outputs.key }}
           key: ${{ steps.opencv.outputs.key }}
@@ -70,7 +70,7 @@ jobs:
       - name: Keep the OpenCV build logs when a step fails
         # The compile output goes to a log file that the runner deletes with the job.
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: opencv-build-log-${{ matrix.arch }}
           path: |
@@ -97,13 +97,13 @@ jobs:
             tests/test_jpeg.py tests/test_app_dialogs_gallery.py -m "not timing" -rs
 
       - name: Keep the window picture from the built application
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: test-shot-${{ matrix.arch }}
           path: build/test_shot.png
 
       - name: Store the disk image
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: disk-image-${{ matrix.arch }}
           path: dist/*.dmg
@@ -112,7 +112,7 @@ jobs:
       - name: Store the ffmpeg and libusb source tarballs
         # Both architectures build from the same checksum-verified tarballs; one copy.
         if: matrix.arch == 'arm64'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: source-tarballs
           path: |
@@ -127,20 +127,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Collect the disk images
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           pattern: disk-image-*
           merge-multiple: true
           path: images
 
       - name: Collect the source tarballs
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: source-tarballs
           path: sources
 
       - name: Create the release with both images and the source tarballs attached
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           files: |
             images/*.dmg

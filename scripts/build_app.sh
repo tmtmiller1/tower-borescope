@@ -21,7 +21,7 @@ unset VIRTUAL_ENV
 
 ROOT="${0:A:h:h}"
 APP_NAME="Tower Borescope"
-BUNDLE_ID="com.tylermiller.towerborescope"
+BUNDLE_ID="io.github.tmtmiller1.towerborescope"
 MIN_MACOS="13.0"
 BUILD="$ROOT/build"
 DIST="$ROOT/dist"

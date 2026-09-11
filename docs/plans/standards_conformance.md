@@ -7,7 +7,7 @@ and the rules enforced by the `obs_quality` audit in `tower-agent/scripts/analyt
 ## Decisions
 
 - Distribution `tower-borescope`, import package `tower_borescope`, application display name
-  "Tower Borescope", bundle identifier `com.tylermiller.towerborescope`.
+  "Tower Borescope", bundle identifier `io.github.tmtmiller1.towerborescope`.
 - Capture folders keep their existing names: `~/Pictures/Scope`, `~/Movies/Scope`,
   `~/Documents/Scope Reports`.
 - Settings move to `~/Library/Application Support/Tower Borescope/settings.json`.
