@@ -73,8 +73,17 @@ fi
 #   protobuf, flatbuffers, ONNX Runtime, OpenVINO, Eigen, VTK, TBB, OpenMP, GDAL and GDCM,
 #   which the built modules do not use.
 # - Kept as in the wheel: Apple Accelerate for LAPACK, the OpenCL framework, Grand Central
-#   Dispatch, Intel ITT tracing (bundled, GPL-2.0-only OR BSD-3-Clause, used under
-#   BSD-3-Clause), and on arm64 carotene (bundled, BSD-3-Clause) and KleidiCV.
+#   Dispatch and Intel ITT tracing (bundled, GPL-2.0-only OR BSD-3-Clause, used under
+#   BSD-3-Clause).
+# - carotene (bundled, BSD-3-Clause) and KleidiCV are Arm code: on arm64 both are on as in
+#   the wheel. On x86_64 both are off; left on, OpenCV downloads KleidiCV by itself and
+#   compiles its NEON sources with Arm-only compiler flags, which stops the build. The
+#   options sit last in the list, so the arm64 list and its cache key stay the same.
+if [[ "$ARCH" == arm64 ]]; then
+  ARM_ACCELERATION=(-DWITH_CAROTENE=ON -DWITH_KLEIDICV=ON)
+else
+  ARM_ACCELERATION=(-DWITH_CAROTENE=OFF -DWITH_KLEIDICV=OFF)
+fi
 CMAKE_OPTIONS=(
   "-DBUILD_LIST=$MODULES" -DPYTHON3_LIMITED_API=ON
   "-DCMAKE_OSX_DEPLOYMENT_TARGET=$MIN_MACOS" "-DCMAKE_OSX_ARCHITECTURES=$ARCH"
@@ -93,7 +102,7 @@ CMAKE_OPTIONS=(
   -DWITH_VTK=OFF -DWITH_TBB=OFF -DBUILD_TBB=OFF -DWITH_OPENMP=OFF -DWITH_GDAL=OFF
   -DWITH_GDCM=OFF -DBUILD_CLAPACK=OFF
   -DWITH_LAPACK=ON -DWITH_OPENCL=ON -DWITH_ITT=ON -DBUILD_ITT=ON
-  -DWITH_CAROTENE=ON -DWITH_KLEIDICV=ON
+  "${ARM_ACCELERATION[@]}"
 )
 # One change to the sdist, in its build tooling only. OpenCV's typing stub generator
 # refines functions of modules this build leaves out (features, calib) and defines aliases
