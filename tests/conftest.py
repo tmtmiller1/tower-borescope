@@ -35,6 +35,8 @@ APP_EXECUTABLE_SUFFIX = "Tower Borescope.app/Contents/MacOS/Tower Borescope"
 WAIT_TIMEOUT = 8.0
 POLL_INTERVAL = 0.01
 MUTATION_TOOL_MODULE = "mutmut"
+QT_PLATFORM_VARIABLE = "QT_QPA_PLATFORM"
+OFFSCREEN_PLATFORM = "offscreen"
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -218,7 +220,9 @@ def pytest_configure(config: pytest.Config) -> None:
     starting a new interpreter. OpenCV on macOS spreads work over Grand Central
     Dispatch, which does not survive ``fork``: a child that calls a parallel OpenCV
     function crashes, and mutmut reports the mutant as a segfault instead of a result.
-    Ordinary test runs and the application keep OpenCV's threads.
+    Qt uses its offscreen platform there as well, so no window opens from a forked
+    child. Ordinary test runs and the application keep OpenCV's threads and Qt's
+    default platform.
 
     Args:
         config: The pytest configuration; unused.
@@ -227,3 +231,4 @@ def pytest_configure(config: pytest.Config) -> None:
         import cv2
 
         cv2.setNumThreads(1)
+        os.environ.setdefault(QT_PLATFORM_VARIABLE, OFFSCREEN_PLATFORM)

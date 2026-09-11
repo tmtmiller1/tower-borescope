@@ -84,6 +84,7 @@ Pytest suite for tower_borescope, using synthetic media and test doubles instead
 - `test_measure_render.py`: measurement and annotation drawing onto frames.
 - `test_measure_shapes.py`: distance, angle and area measurements, annotations and overlay snapshots.
 - `test_measure_units.py`: length and area formatting in every unit.
+- `test_mutation_score.py`: mutation outcome counting, per-area grouping, floors, the gate and baseline updates.
 - `test_remote_page.py`: phone monitor page content.
 - `test_remote_qr.py`: QR code matrix generation.
 - `test_remote_server.py`: phone monitor server endpoints, streaming, callbacks and shutdown.

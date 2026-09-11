@@ -25,6 +25,8 @@ uv run python scripts/check_limits.py
 uv run pytest
 uv run pytest --camera
 uv run pytest --camera --live-ai
+uv run mutmut run
+uv run python scripts/mutation_score.py --gate
 scripts/build_app.sh
 ```
 
@@ -36,6 +38,10 @@ the `build` dependency group (`uv sync --all-groups`) and produces the signed bu
 disk image in `dist/`; `.github/workflows/release.yml` runs it for both architectures.
 Tests marked `timing` assert real-time frame rates. CI and mutation runs leave them out,
 so `uv run pytest -m timing` runs them on a development machine.
+`uv run mutmut run` mutates the whole package and keeps its results in `mutants/`; a later
+run retests only changed code. `scripts/mutation_score.py --gate` then fails when a
+subpackage scores more than one point below its floor in `docs/mutation_baseline.json` or
+when mutants remain unchecked.
 
 ## Enforced limits
 
