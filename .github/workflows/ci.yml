@@ -53,4 +53,20 @@ jobs:
       - name: Tests
         # Tests marked timing assert wall-clock speed. Shared runners have three
         # processors and variable load, so those tests run on development machines.
-        run: uv run pytest -m "not timing"
+        # Output is unbuffered, and a run still going after 18 minutes lists its Python
+        # processes and makes each print every thread's stack before the job limit.
+        env:
+          PYTHONUNBUFFERED: "1"
+          PYTHONFAULTHANDLER: "1"
+        run: |
+          uv run pytest -m "not timing" &
+          tests=$!
+          (
+            sleep 1080
+            if kill -0 "$tests" 2>/dev/null; then
+              echo "Tests still running after 18 minutes. Python processes:"
+              ps -axo pid,ppid,etime,command | grep -iE "[p]ython|[p]ytest" || true
+              pkill -ABRT -f "[p]ython" || true
+            fi
+          ) &
+          wait "$tests"
