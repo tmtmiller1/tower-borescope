@@ -77,7 +77,7 @@ when mutants remain unchecked.
 | Size | functions 50 lines, classes 200 lines, modules 400 lines |
 | Classes | 20 methods, 15 public methods, weighted method complexity 30 |
 | Signatures | 5 parameters, nesting depth 4, no mutable defaults |
-| Documentation | Google-style docstrings on modules and public symbols; a `README.md` in every directory |
+| Documentation | Google-style docstrings on modules and public symbols; a `README.md` in every directory except `.github/`, which GitHub serves as the repository front page in place of the root file |
 | Exceptions | specific exception types; `except Exception` only when re-raising |
 | Configuration | endpoints, native tool paths and keys come from environment variables or `.env` |
 | Prose | no em or en dashes, emoji, second person, words from the standards' forbidden lists, or conversational filler |

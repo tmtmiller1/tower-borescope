@@ -9,11 +9,11 @@ Turn a cheap USB inspection borescope into a real inspection instrument on macOS
 
 Geek szitman supercamera borescopes (USB ID `2ce3:3828`) are sold for phone apps such as xscope
 and Useeplus. They do not identify themselves to macOS as webcams, so no Mac application sees
-them — including QuickTime, Photo Booth and every video-conferencing tool. Tower Borescope talks
+them, including QuickTime, Photo Booth and every video-conferencing tool. Tower Borescope talks
 to the hardware directly over libusb and builds a full inspection workstation on top of it: live
 view, capture, image processing, on-screen measurement, AI-assisted analysis and PDF reporting.
 
-It ships as a self-contained Mac application. Nothing else needs to be installed — the bundle
+It ships as a self-contained Mac application. Nothing else needs to be installed; the bundle
 carries its own Python, Qt, OpenCV, ffmpeg and libusb.
 
 ## Features
@@ -46,8 +46,8 @@ Grayscale, Inverted, Edges and Outline.
   inches, or feet and inches.
 - Arrow, circle, text and freehand annotation.
 - Scale calibration from a clicked known length. Every calibration records the focus level, and
-  the Tools tab warns when the current focus differs — the signal that the working distance
-  changed and the scale no longer holds.
+  the Tools tab warns when the current focus differs, which is the signal that the working
+  distance changed and the scale no longer holds.
 - Freeze a frame, and compare it against a reference image split side by side or overlaid with
   adjustable opacity.
 
