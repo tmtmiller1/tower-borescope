@@ -22,3 +22,7 @@ _legacy/
 settings.json
 *.log
 .DS_Store
+
+# macOS metadata
+._*
+.AppleDouble
